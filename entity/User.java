@@ -23,7 +23,7 @@ public class User {
 
     @Column(length = 20)
     @Enumerated(EnumType.STRING)
-    private UserRole role = UserRole.user;
+    private UserRole role = UserRole.USER;
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
@@ -36,5 +36,5 @@ public class User {
         createdAt = LocalDateTime.now();
     }
 
-    public enum UserRole { user, group_admin, sys_admin }
+    public enum UserRole { USER, GROUP_ADMIN, SYS_ADMIN  }
 }

@@ -26,4 +26,6 @@ public interface PostService {
     PostDetailVO rollbackPost(Long id, Long verId, Long userId);
     // ✅ 2. 新增：把实现类里的转换方法暴露到接口中
     PostDetailVO convertToVO(Post post);
+
+    void forceDeletePost(Long id);
 }

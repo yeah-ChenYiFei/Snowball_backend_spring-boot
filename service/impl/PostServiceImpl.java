@@ -179,4 +179,9 @@ public class PostServiceImpl implements PostService {
         vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
         return vo;
     }
+    @Override
+    public void forceDeletePost(Long id) {
+        // 管理员强删，直接物理删除，不进回收站
+        postRepository.deleteById(id);
+    }
 }

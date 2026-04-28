@@ -14,6 +14,7 @@ public class PostDetailVO {
     private Long version; // 当前版本号
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
+    private String authorName;
+    private Integer commentCount;
     // 未来这里还可以加：作者名称、标签列表、评论数等聚合数据
 }

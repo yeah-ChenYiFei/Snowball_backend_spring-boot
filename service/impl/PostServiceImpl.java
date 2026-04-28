@@ -5,8 +5,10 @@ import com.example.snowball.dto.PostCreateDTO;
 import com.example.snowball.dto.PostUpdateDTO;
 import com.example.snowball.entity.Post;
 import com.example.snowball.entity.PostVersion;
+import com.example.snowball.repository.CommentRepository;
 import com.example.snowball.repository.PostRepository;
 import com.example.snowball.repository.PostVersionRepository;
+import com.example.snowball.repository.UserRepository;
 import com.example.snowball.service.PostService;
 import com.example.snowball.vo.PostDetailVO;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -21,10 +23,13 @@ public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
     private final PostVersionRepository postVersionRepository;
-
-    public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository) {
+    private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository, UserRepository userRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.postVersionRepository = postVersionRepository;
+        this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Override
@@ -157,7 +162,7 @@ public class PostServiceImpl implements PostService {
     }
 
     // --- 私有辅助方法：将 Entity 转换为前端需要的 VO ---
-    private PostDetailVO convertToVO(Post post) {
+    public PostDetailVO convertToVO(Post post) {
         PostDetailVO vo = new PostDetailVO();
         vo.setId(post.getId());
         vo.setUserId(post.getUserId());
@@ -168,6 +173,10 @@ public class PostServiceImpl implements PostService {
         vo.setVersion(post.getVersion());
         vo.setCreatedAt(post.getCreatedAt());
         vo.setUpdatedAt(post.getUpdatedAt());
+        userRepository.findById(post.getUserId()).ifPresent(user -> {
+            vo.setAuthorName(user.getUsername()); // 确保 PostDetailVO 里有 private String authorName; 字段
+        });
+        vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
         return vo;
     }
 }

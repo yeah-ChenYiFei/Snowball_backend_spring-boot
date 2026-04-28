@@ -4,7 +4,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 @Data
 @Entity
-@Table(name = "groups")
+@Table(name = "`groups`")
 public class Group {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

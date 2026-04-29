@@ -31,4 +31,5 @@ public interface PostService {
     // 在 PostService 接口里加上这个方法声明
     void react(Long postId, Long userId, String reactionTypeStr);
 
+    List<PostDetailVO> searchPosts(String q, String type);
 }

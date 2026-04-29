@@ -1,26 +1,30 @@
 package com.example.snowball.controller;
+
 import com.example.snowball.common.Result;
-import com.example.snowball.entity.Book;
-import com.example.snowball.repository.BookRepository;
-import org.springframework.security.core.Authentication;
+import com.example.snowball.dto.BookCreateDTO;
+import com.example.snowball.service.BookService;
+import com.example.snowball.vo.BookVO;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/books")
-public class BookController {
-    private final BookRepository bookRepository;
-    public BookController(BookRepository bookRepository) { this.bookRepository = bookRepository; }
+public class BookController extends BaseController {
+
+    private final BookService bookService;
+
+    public BookController(BookService bookService) {
+        this.bookService = bookService;
+    }
 
     @GetMapping
-    public Result<List<Book>> getMyBooks(Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
-        return Result.success(bookRepository.findByUserIdOrderByPurchaseDateDesc(userId));
+    public Result<List<BookVO>> getMyBooks() {
+        return Result.success(bookService.getMyBooks(getCurrentUserId()));
     }
 
     @PostMapping
-    public Result<Book> addBook(@RequestBody Book book, Authentication auth) {
-        Long userId = (Long) auth.getPrincipal();
-        book.setUserId(userId);
-        return Result.success(bookRepository.save(book));
+    public Result<BookVO> addBook(@RequestBody BookCreateDTO dto) {
+        return Result.success(bookService.addBook(getCurrentUserId(), dto));
     }
 }

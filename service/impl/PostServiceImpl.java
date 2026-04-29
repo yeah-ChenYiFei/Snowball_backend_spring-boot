@@ -133,7 +133,7 @@ public class PostServiceImpl implements PostService {
     @Override
     public PostDetailVO getPostById(Long id) {
         Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("帖子不存在"));
+                .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
         return convertToVO(post);
     }
 
@@ -141,9 +141,9 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostDetailVO updatePost(Long id, Long userId, PostUpdateDTO dto) {
         Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("帖子不存在"));
+                .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
         if (!post.getUserId().equals(userId)) {
-            throw new RuntimeException("无权编辑他人作品");
+            throw new BusinessException(403, "无权编辑他人作品");
         }
         try {
             List<PostVersion> existingVersions = postVersionRepository.findByPostIdOrderByVersionNumberDesc(id);
@@ -172,9 +172,9 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public void deletePost(Long id, Long userId) {
         Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("帖子不存在"));
+                .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
         if (!post.getUserId().equals(userId)) {
-            throw new RuntimeException("无权删除他人作品");
+            throw new BusinessException(403, "无权删除他人作品");
         }
         post.setStatus("HIDDEN");
         postRepository.save(post);
@@ -183,7 +183,7 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<PostVersion> getPostVersions(Long id) {
         if (!postRepository.existsById(id)) {
-            throw new RuntimeException("帖子不存在");
+            throw new BusinessException(404, "帖子不存在");
         }
         return postVersionRepository.findByPostIdOrderByVersionNumberDesc(id);
     }
@@ -233,5 +233,19 @@ public class PostServiceImpl implements PostService {
             r.setReactionType(newType);
             postReactionRepository.save(r);
         }
+    }
+    @Override
+    public List<PostDetailVO> searchPosts(String q, String type) {
+        List<String> hiddenStatuses = List.of("HIDDEN", "DELETED");
+        List<Post> posts;
+
+        if (q != null && !q.isEmpty()) {
+            posts = postRepository.findByTitleContainingIgnoreCaseAndStatusNotIn(q, hiddenStatuses);
+        } else if (type != null && !type.isEmpty()) {
+            posts = postRepository.findByTypeAndStatusNotIn(type, hiddenStatuses);
+        } else {
+            posts = postRepository.findByStatusNotIn(hiddenStatuses);
+        }
+        return posts.stream().map(this::convertToVO).toList();
     }
 }

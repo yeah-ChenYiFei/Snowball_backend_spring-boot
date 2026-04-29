@@ -1,29 +1,30 @@
 package com.example.snowball.controller;
 
 import com.example.snowball.common.Result;
-import com.example.snowball.entity.Tag;
-import com.example.snowball.repository.TagRepository;
+import com.example.snowball.dto.TagCreateDTO;
+import com.example.snowball.service.TagService;
+import com.example.snowball.vo.TagVO;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/tags")
-public class TagController {
-    private final TagRepository tagRepository;
-    public TagController(TagRepository tagRepository) { this.tagRepository = tagRepository; }
+public class TagController extends BaseController { // ✅ 继承基类
+
+    private final TagService tagService; // ✅ 只找 Service
+
+    public TagController(TagService tagService) {
+        this.tagService = tagService;
+    }
 
     @GetMapping
-    public Result<List<Tag>> getAllTags() {
-        return Result.success(tagRepository.findAll());
+    public Result<List<TagVO>> getAllTags() {
+        return Result.success(tagService.getAllTags());
     }
 
     @PostMapping
-    public Result<Tag> createTag(@RequestBody Tag tag) {
-        // 简单防重
-        if(tagRepository.findByName(tag.getName()).isPresent()) {
-            return Result.error(400, "标签已存在");
-        }
-        return Result.success(tagRepository.save(tag));
+    public Result<TagVO> createTag(@RequestBody TagCreateDTO dto) { // ✅ 用 DTO 接收
+        return Result.success(tagService.createTag(dto));
     }
 }

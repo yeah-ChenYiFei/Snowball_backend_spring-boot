@@ -1,18 +1,23 @@
 package com.example.snowball.controller;
+
 import com.example.snowball.common.Result;
 import com.example.snowball.dto.UserLoginDTO;
 import com.example.snowball.dto.UserRegisterDTO;
 import com.example.snowball.service.UserService;
+import com.example.snowball.vo.UserLoginVO; // ✅ 引入 VO
 import com.example.snowball.vo.UserVO;
 import jakarta.validation.Valid;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/auth")
-public class AuthController {
+public class AuthController extends BaseController { // ✅ 1. 继承基类
+
     private final UserService userService;
-    public AuthController(UserService userService) { this.userService = userService; }
+
+    public AuthController(UserService userService) {
+        this.userService = userService;
+    }
 
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody UserRegisterDTO dto) {
@@ -21,13 +26,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Result<Map<String, Object>> login(@Valid @RequestBody UserLoginDTO dto) {
+    public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO dto) { // ✅ 2. 返回值改 VO
         return Result.success(userService.login(dto));
     }
 
-    @GetMapping("/me") // 获取当前登录用户信息
-    public Result<UserVO> me(Authentication authentication) {
-        Long userId = (Long) authentication.getPrincipal(); // 从 SecurityContext 拿 ID
+    @GetMapping("/me")
+    public Result<UserVO> me() { // ✅ 3. 删掉 Authentication 参数
+        Long userId = getCurrentUserId(); // ✅ 4. 用基类方法拿 ID
         return Result.success(userService.getCurrentUser(userId));
     }
 }

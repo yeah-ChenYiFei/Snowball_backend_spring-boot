@@ -16,20 +16,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/posts")
-public class PostController {
+public class PostController extends BaseController{
     private final PostService postService;
 
     public PostController(PostService postService) {
         this.postService = postService;
-    }
-
-    // 统一使用你原有的获取 userId 方式
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("用户未登录");
-        }
-        return (Long) authentication.getPrincipal();
     }
 
     @GetMapping("/ping")
@@ -39,15 +30,10 @@ public class PostController {
 
     @GetMapping
     public Result<List<PostDetailVO>> getAllPosts() {
-        // 尝试获取当前登录用户ID；未登录（游客）时为 null
-        Long userId = null;
-        try {
-            userId = getCurrentUserId();
-        } catch (Exception ignore) {
-            // 游客访问时忽略“用户未登录”异常
-        }
+        Long userId = getOptionalUserId();
         return Result.success(postService.getAllPosts(userId));
     }
+
 
 
     @GetMapping("/{id}")

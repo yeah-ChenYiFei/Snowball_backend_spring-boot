@@ -4,9 +4,13 @@ import com.example.snowball.common.BusinessException;
 import com.example.snowball.dto.PostCreateDTO;
 import com.example.snowball.dto.PostUpdateDTO;
 import com.example.snowball.entity.Post;
+// ✅ 新增导入
+import com.example.snowball.entity.PostReaction;
 import com.example.snowball.entity.PostVersion;
 import com.example.snowball.repository.CommentRepository;
 import com.example.snowball.repository.PostRepository;
+// ✅ 修复：加上了漏掉的引号
+import com.example.snowball.repository.PostReactionRepository;
 import com.example.snowball.repository.PostVersionRepository;
 import com.example.snowball.repository.UserRepository;
 import com.example.snowball.service.PostService;
@@ -17,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+// ✅ 新增导入
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -25,11 +33,14 @@ public class PostServiceImpl implements PostService {
     private final PostVersionRepository postVersionRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
-    public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository, UserRepository userRepository, CommentRepository commentRepository) {
+    private final PostReactionRepository postReactionRepository;
+
+    public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository, UserRepository userRepository, CommentRepository commentRepository, PostReactionRepository postReactionRepository) {
         this.postRepository = postRepository;
         this.postVersionRepository = postVersionRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
+        this.postReactionRepository = postReactionRepository;
     }
 
     @Override
@@ -42,7 +53,6 @@ public class PostServiceImpl implements PostService {
         post.setCurrentBody(dto.getBody());
         postRepository.save(post);
 
-        // 生成 V1 版本记录
         PostVersion version = new PostVersion();
         version.setPostId(post.getId());
         version.setVersionNumber(1);
@@ -52,6 +62,7 @@ public class PostServiceImpl implements PostService {
 
         return convertToVO(post);
     }
+
     @Override
     @Transactional
     public PostDetailVO rollbackPost(Long id, Long verId, Long userId) {
@@ -68,7 +79,6 @@ public class PostServiceImpl implements PostService {
         }
 
         try {
-            // 1. 把当前状态存为新版本（回滚本身也是一种操作，保留完整历史）
             PostVersion versionRecord = new PostVersion();
             versionRecord.setPostId(post.getId());
             versionRecord.setVersionNumber(post.getVersion().intValue() + 1);
@@ -76,9 +86,8 @@ public class PostServiceImpl implements PostService {
             versionRecord.setChangeSummary("回滚至版本 V" + targetVersion.getVersionNumber());
             postVersionRepository.save(versionRecord);
 
-            // 2. 将目标版本的内容恢复到主表
             post.setCurrentBody(targetVersion.getBodySnapshot());
-            postRepository.save(post); // 触发乐观锁
+            postRepository.save(post);
 
             return convertToVO(post);
         } catch (ObjectOptimisticLockingFailureException e) {
@@ -86,11 +95,39 @@ public class PostServiceImpl implements PostService {
         }
     }
 
+    // ✅ 删除了老的空参 getAllPosts() 方法，只保留这个带 userId 的
     @Override
-    public List<PostDetailVO> getAllPosts() {
-        // 排除 HIDDEN 和 DELETED 状态的帖子
+    public List<PostDetailVO> getAllPosts(Long userId) {
         List<Post> posts = postRepository.findByStatusNotIn(Arrays.asList("HIDDEN", "DELETED"));
-        return posts.stream().map(this::convertToVO).toList();
+
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        List<PostReaction> userReactions = (userId != null)
+                ? postReactionRepository.findByPostIdInAndUserId(postIds, userId)
+                : List.of();
+
+        Map<Long, PostReaction.ReactionType> reactionMap = userReactions.stream()
+                .collect(Collectors.toMap(PostReaction::getPostId, PostReaction::getReactionType, (a, b) -> a));
+
+        List<PostDetailVO> voList = posts.stream().map(post -> {
+            PostDetailVO vo = convertToVO(post);
+            long likes = postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.LIKE);
+            long dislikes = postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.DISLIKE);
+            vo.setLikeCount(likes);
+            vo.setDislikeCount(dislikes);
+            vo.setCurrentUserReaction(reactionMap.get(post.getId()) != null ? reactionMap.get(post.getId()).name() : null);
+            return vo;
+        }).collect(Collectors.toList());
+
+        // 推荐排序
+        voList.sort((a, b) -> Double.compare(calcHotScore(b), calcHotScore(a)));
+        return voList;
+    }
+
+    private double calcHotScore(PostDetailVO vo) {
+        long netLikes = (vo.getLikeCount() != null ? vo.getLikeCount() : 0) - (vo.getDislikeCount() != null ? vo.getDislikeCount() : 0);
+        if (netLikes <= 0) return 0;
+        long hoursSincePost = java.time.Duration.between(vo.getCreatedAt(), java.time.LocalDateTime.now()).toHours() + 2;
+        return netLikes / Math.pow(hoursSincePost, 1.5);
     }
 
     @Override
@@ -103,37 +140,31 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostDetailVO updatePost(Long id, Long userId, PostUpdateDTO dto) {
-        // 1. 查询原帖子
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("帖子不存在"));
-
-        // 简单权限校验（未来替换为 JWT 校验）
         if (!post.getUserId().equals(userId)) {
-            throw new RuntimeException("无权编辑他人作品"); // 对应文档返回 403
+            throw new RuntimeException("无权编辑他人作品");
         }
-
         try {
-            // 2. 生成不可变的历史版本快照（存入 post_versions 表）
+            List<PostVersion> existingVersions = postVersionRepository.findByPostIdOrderByVersionNumberDesc(id);
+            int currentMaxVer = existingVersions.isEmpty() ? 0 : existingVersions.get(0).getVersionNumber();
+            int nextVersion = currentMaxVer + 1;
+
             PostVersion version = new PostVersion();
             version.setPostId(post.getId());
-            version.setVersionNumber(post.getVersion().intValue() + 1); // 版本号+1
-            version.setBodySnapshot(post.getCurrentBody()); // 存旧内容
+            version.setVersionNumber(nextVersion);
+            version.setBodySnapshot(post.getCurrentBody());
             version.setChangeSummary(dto.getChangeSummary());
             postVersionRepository.save(version);
 
-            // 3. 更新当前帖子内容
             post.setTitle(dto.getTitle());
             post.setCurrentBody(dto.getBody());
-
-            // 4. 保存帖子。@Version 注解会自动比对 version 字段，
-            // 如果并发导致 version 不匹配，JPA 会抛出 ObjectOptimisticLockingFailureException
             postRepository.save(post);
-
             return convertToVO(post);
-
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new BusinessException(409, "版本号冲突，请刷新页面后重试");
         } catch (ObjectOptimisticLockingFailureException e) {
-            // 对应文档 3.1.2：并发冲突使用乐观锁返回 409
-            throw new RuntimeException("CONFLICT: 内容已被其他人修改，请刷新后重试");
+            throw new BusinessException(409, "内容已被其他人修改，请刷新后重试");
         }
     }
 
@@ -142,12 +173,9 @@ public class PostServiceImpl implements PostService {
     public void deletePost(Long id, Long userId) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("帖子不存在"));
-
         if (!post.getUserId().equals(userId)) {
             throw new RuntimeException("无权删除他人作品");
         }
-
-        // 对应文档 3.1.1：逻辑删除，标记为隐藏状态
         post.setStatus("HIDDEN");
         postRepository.save(post);
     }
@@ -157,11 +185,9 @@ public class PostServiceImpl implements PostService {
         if (!postRepository.existsById(id)) {
             throw new RuntimeException("帖子不存在");
         }
-        // 复用 Repository 里写好的倒序查询方法
         return postVersionRepository.findByPostIdOrderByVersionNumberDesc(id);
     }
 
-    // --- 私有辅助方法：将 Entity 转换为前端需要的 VO ---
     public PostDetailVO convertToVO(Post post) {
         PostDetailVO vo = new PostDetailVO();
         vo.setId(post.getId());
@@ -174,14 +200,38 @@ public class PostServiceImpl implements PostService {
         vo.setCreatedAt(post.getCreatedAt());
         vo.setUpdatedAt(post.getUpdatedAt());
         userRepository.findById(post.getUserId()).ifPresent(user -> {
-            vo.setAuthorName(user.getUsername()); // 确保 PostDetailVO 里有 private String authorName; 字段
+            vo.setAuthorName(user.getUsername());
         });
         vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
         return vo;
     }
+
     @Override
     public void forceDeletePost(Long id) {
-        // 管理员强删，直接物理删除，不进回收站
         postRepository.deleteById(id);
+    }
+
+    // ==================== 新增：评价相关方法 ====================
+    @Override
+    @Transactional
+    public void react(Long postId, Long userId, String reactionTypeStr) {
+        PostReaction.ReactionType newType = PostReaction.ReactionType.valueOf(reactionTypeStr);
+        Optional<PostReaction> existing = postReactionRepository.findByPostIdAndUserId(postId, userId);
+
+        if (existing.isPresent()) {
+            PostReaction r = existing.get();
+            if (r.getReactionType() == newType) {
+                postReactionRepository.delete(r);
+            } else {
+                r.setReactionType(newType);
+                postReactionRepository.save(r);
+            }
+        } else {
+            PostReaction r = new PostReaction();
+            r.setPostId(postId);
+            r.setUserId(userId);
+            r.setReactionType(newType);
+            postReactionRepository.save(r);
+        }
     }
 }

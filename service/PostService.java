@@ -13,7 +13,7 @@ public interface PostService {
     // 创建
     PostDetailVO createPost(Long userId, PostCreateDTO dto);
     // 获取列表
-    List<PostDetailVO> getAllPosts();
+    List<PostDetailVO> getAllPosts(Long userId);
     // 获取详情
     PostDetailVO getPostById(Long id);
     // 编辑（含版本控制核心算法）
@@ -28,4 +28,7 @@ public interface PostService {
     PostDetailVO convertToVO(Post post);
 
     void forceDeletePost(Long id);
+    // 在 PostService 接口里加上这个方法声明
+    void react(Long postId, Long userId, String reactionTypeStr);
+
 }

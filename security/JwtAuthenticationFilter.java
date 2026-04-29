@@ -51,10 +51,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(userId, null, List.of(authority));
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    // ✅ 核心修复：如果根据 Token 里的 ID 查不到用户（比如数据库被清空、用户被注销）
+                    // 必须清除上下文并直接返回 401，绝对不能放行！
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 返回 401 状态码
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"code\":401, \"message\":\"Token 无效或用户不存在，请重新登录\"}");
+                    return; // ✅ 关键：直接 return，终止请求，不再往下走 filterChain
                 }
             } catch (Exception e) {
                 // Token 无效或用户被删，不放行
                 SecurityContextHolder.clearContext();
+                e.printStackTrace();
             }
         }
 

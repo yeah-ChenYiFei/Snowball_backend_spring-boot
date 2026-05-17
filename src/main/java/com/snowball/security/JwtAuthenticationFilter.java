@@ -61,9 +61,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return; // ✅ 关键：直接 return，终止请求，不再往下走 filterChain
                 }
             } catch (Exception e) {
-                // Token 无效或用户被删，不放行
+                // Token 无效或过期，清除上下文并返回 401
                 SecurityContextHolder.clearContext();
-                e.printStackTrace();
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":401, \"message\":\"Token 无效或已过期，请重新登录\"}");
+                return;
             }
         }
 

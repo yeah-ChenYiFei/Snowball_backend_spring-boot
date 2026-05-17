@@ -3,6 +3,7 @@ package com.snowball.controller;
 import com.snowball.common.Result;
 import com.snowball.dto.WorldRelationCreateDTO;
 import com.snowball.service.WorldRelationService;
+import com.snowball.service.WorldService;
 import com.snowball.vo.WorldRelationVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -14,13 +15,17 @@ import java.util.List;
 public class WorldRelationController extends BaseController {
 
     private final WorldRelationService relationService;
+    private final WorldService worldService;
 
-    public WorldRelationController(WorldRelationService relationService) {
+    public WorldRelationController(WorldRelationService relationService, WorldService worldService) {
         this.relationService = relationService;
+        this.worldService = worldService;
     }
 
     @GetMapping
     public Result<List<WorldRelationVO>> getRelations(@PathVariable Long worldId) {
+        Long userId = getOptionalUserId();
+        worldService.checkWorldAccess(worldId, userId);
         return Result.success(relationService.getRelations(worldId));
     }
 
@@ -37,6 +42,8 @@ public class WorldRelationController extends BaseController {
 
     @GetMapping("/{relationId}")
     public Result<WorldRelationVO> getRelation(@PathVariable Long worldId, @PathVariable Long relationId) {
+        Long userId = getOptionalUserId();
+        worldService.checkWorldAccess(worldId, userId);
         return Result.success(relationService.getRelation(relationId));
     }
 

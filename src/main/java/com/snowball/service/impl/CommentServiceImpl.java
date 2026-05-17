@@ -30,6 +30,7 @@ public class CommentServiceImpl implements CommentService {
         for (Comment c : comments) {
             CommentVO vo = new CommentVO();
             vo.setId(c.getId());
+            vo.setPostId(c.getPostId());
             vo.setBody(c.getBody());
             vo.setParentId(c.getParentId());
             vo.setUserId(c.getUserId());

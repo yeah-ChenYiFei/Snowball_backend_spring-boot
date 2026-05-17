@@ -24,6 +24,9 @@ public class World {
     @Column(length = 50)
     private String type;
 
+    @Column(name = "is_public")
+    private Boolean isPublic = true;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

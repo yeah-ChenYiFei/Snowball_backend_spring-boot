@@ -74,6 +74,11 @@ public class WorldEntryServiceImpl implements WorldEntryService {
         return toVO(entryRepository.save(entry));
     }
 
+    @Override
+    public void deleteEntry(Long entryId) {
+        entryRepository.deleteById(entryId);
+    }
+
     private WorldEntryVO toVO(WorldEntry e) {
         WorldEntryVO vo = new WorldEntryVO();
         vo.setId(e.getId());

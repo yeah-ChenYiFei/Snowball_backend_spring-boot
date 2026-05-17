@@ -18,6 +18,7 @@ public class BookServiceImpl implements BookService {
         return bookRepository.findByUserIdOrderByPurchaseDateDesc(userId).stream().map(book -> {
             BookVO vo = new BookVO();
             vo.setId(book.getId());
+            vo.setUserId(book.getUserId());
             vo.setTitle(book.getTitle());
             vo.setAuthor(book.getAuthor());
             vo.setPrice(book.getPrice());
@@ -39,6 +40,7 @@ public class BookServiceImpl implements BookService {
 
         BookVO vo = new BookVO();
         vo.setId(book.getId());
+        vo.setUserId(book.getUserId());
         vo.setTitle(book.getTitle());
         vo.setAuthor(book.getAuthor());
         vo.setPrice(book.getPrice());

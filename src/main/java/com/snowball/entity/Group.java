@@ -10,6 +10,8 @@ public class Group {
     private Long id;
     @Column(length = 100, nullable = false)
     private String name;
+    @Column(length = 500)
+    private String description;
     @Column(name = "creator_id", nullable = false)
     private Long creatorId;
     @Column(name = "is_private")

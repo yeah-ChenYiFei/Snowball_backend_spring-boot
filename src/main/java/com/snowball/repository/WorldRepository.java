@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface WorldRepository extends JpaRepository<World, Long> {
     List<World> findByUserIdOrderByCreatedAtDesc(Long userId);
+    List<World> findByIsPublicTrueAndUserIdNotOrderByCreatedAtDesc(Long userId);
 }

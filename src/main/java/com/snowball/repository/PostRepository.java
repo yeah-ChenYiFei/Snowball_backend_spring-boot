@@ -11,6 +11,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // 按用户查询帖子列表
     Page<Post> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+    // 按用户查询非隐藏帖子（用于个人主页）
+    List<Post> findByUserIdAndStatusNotInOrderByCreatedAtDesc(Long userId, List<String> excludedStatuses);
+
     // 查询所有非隐藏/非删除状态的帖子（用于广场展示）
     List<Post> findByStatusNotIn(List<String> excludedStatuses);
 

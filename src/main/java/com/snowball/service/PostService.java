@@ -12,8 +12,10 @@ import com.snowball.entity.Post;
 public interface PostService {
     // 创建
     PostDetailVO createPost(Long userId, PostCreateDTO dto);
-    // 获取列表
+    // 获取全站列表
     List<PostDetailVO> getAllPosts(Long userId);
+    // 获取某用户的帖子
+    List<PostDetailVO> getUserPosts(Long userId);
     // 获取详情
     PostDetailVO getPostById(Long id);
     // 编辑（含版本控制核心算法）

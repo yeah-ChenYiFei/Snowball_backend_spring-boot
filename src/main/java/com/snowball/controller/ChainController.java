@@ -4,6 +4,7 @@ import com.snowball.common.Result;
 import com.snowball.dto.ChainCreateDTO;
 import com.snowball.dto.ChainSegmentCreateDTO;
 import com.snowball.service.ChainService;
+import com.snowball.vo.ChainDetailVO;
 import com.snowball.vo.ChainSegmentVO;
 import com.snowball.vo.ChainVO;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class ChainController extends BaseController {
     }
 
     @GetMapping("/{chainId}")
-    public Result<List<ChainSegmentVO>> getChainDetail(@PathVariable Long chainId) {
+    public Result<ChainDetailVO> getChainDetail(@PathVariable Long chainId) {
         return Result.success(chainService.getChainDetail(chainId));
     }
 

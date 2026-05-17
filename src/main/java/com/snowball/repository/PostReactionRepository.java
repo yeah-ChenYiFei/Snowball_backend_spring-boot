@@ -17,6 +17,10 @@ public interface PostReactionRepository extends JpaRepository<PostReaction, Long
     /** 某帖子的赞数 */
     long countByPostIdAndReactionType(Long postId, PostReaction.ReactionType type);
 
+    /** 批量查询一组帖子的赞/踩数（N+1 优化） */
+    @Query("SELECT r.postId, r.reactionType, COUNT(r) FROM PostReaction r WHERE r.postId IN :postIds GROUP BY r.postId, r.reactionType")
+    List<Object[]> countGroupByPostIds(@Param("postIds") List<Long> postIds);
+
     /** 批量查询某用户对一组帖子的评价状态（N+1 优化） */
     @Query("SELECT r FROM PostReaction r WHERE r.postId IN :postIds AND r.userId = :userId")
     List<PostReaction> findByPostIdInAndUserId(@Param("postIds") List<Long> postIds, @Param("userId") Long userId);

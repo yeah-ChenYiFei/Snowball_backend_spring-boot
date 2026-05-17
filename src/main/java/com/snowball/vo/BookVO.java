@@ -6,6 +6,7 @@ import java.time.LocalDate;
 @Data
 public class BookVO {
     private Long id;
+    private Long userId;
     private String title;
     private String author;
     private BigDecimal price;

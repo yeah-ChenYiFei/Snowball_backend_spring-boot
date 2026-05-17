@@ -11,4 +11,5 @@ public interface WorldEntryService {
     List<String> getEntryTypes(Long worldId);
     WorldEntryVO createEntry(Long worldId, Long userId, WorldEntryCreateDTO dto);
     WorldEntryVO updateEntry(Long entryId, Long userId, WorldEntryCreateDTO dto);
+    void deleteEntry(Long entryId);
 }

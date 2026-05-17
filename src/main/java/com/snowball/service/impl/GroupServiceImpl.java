@@ -29,28 +29,30 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    @Transactional // ✅ 涉及两张表的操作，必须加事务！要么全成功，要么全失败
+    @Transactional
     public GroupVO createGroup(Long userId, GroupCreateDTO dto) {
-        // 1. 存群组
         Group group = new Group();
         group.setName(dto.getName());
+        group.setDescription(dto.getDescription());
         group.setCreatorId(userId);
         groupRepository.save(group);
 
-        // 2. 创建者自动成为群主
         GroupMember member = new GroupMember();
         member.setGroupId(group.getId());
         member.setUserId(userId);
         member.setRole("admin");
         memberRepository.save(member);
 
-        // 3. 转换为 VO 返回
         GroupVO vo = new GroupVO();
         vo.setId(group.getId());
         vo.setName(group.getName());
+        vo.setDescription(group.getDescription());
         vo.setCreatorId(group.getCreatorId());
         vo.setIsPrivate(group.getIsPrivate());
         vo.setCreatedAt(group.getCreatedAt());
+        vo.setMemberCount(1L);
+
+        userRepository.findById(userId).ifPresent(user -> vo.setCreatorName(user.getUsername()));
         return vo;
     }
 
@@ -63,7 +65,6 @@ public class GroupServiceImpl implements GroupService {
             GroupMemberVO vo = new GroupMemberVO();
             vo.setUserId(m.getUserId());
             vo.setRole(m.getRole());
-            // ✅ 核心：查数据库补全 username
             userRepository.findById(m.getUserId()).ifPresent(user -> {
                 vo.setUsername(user.getUsername());
             });

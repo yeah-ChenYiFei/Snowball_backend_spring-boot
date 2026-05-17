@@ -11,4 +11,6 @@ public class WorldCreateDTO {
     private String description;
 
     private String type;
+
+    private Boolean isPublic = true;
 }

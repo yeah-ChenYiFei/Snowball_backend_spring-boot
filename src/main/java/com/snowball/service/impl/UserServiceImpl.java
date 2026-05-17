@@ -81,8 +81,8 @@ public class UserServiceImpl implements UserService {
         userVO.setAvatarUrl(user.getAvatarUrl());
         profileVO.setUser(userVO);
 
-        // 2. ✅ 炸弹拆除：不再查 Repository，而是调 PostService 拿 VO 列表！
-        profileVO.setPosts(postService.getAllPosts(userId));
+        // 2. 只查该用户自己的帖子
+        profileVO.setPosts(postService.getUserPosts(userId));
 
         // 3. ✅ 炸弹拆除：调 BookService 拿 VO 列表！
         profileVO.setBooks(bookService.getMyBooks(userId));

@@ -60,7 +60,9 @@ public class PostServiceImpl implements PostService {
         version.setChangeSummary("初始创建");
         postVersionRepository.save(version);
 
-        return convertToVO(post);
+        PostDetailVO vo = convertToVO(post);
+        vo.setCommentCount(0);
+        return vo;
     }
 
     @Override
@@ -89,7 +91,9 @@ public class PostServiceImpl implements PostService {
             post.setCurrentBody(targetVersion.getBodySnapshot());
             postRepository.save(post);
 
-            return convertToVO(post);
+            PostDetailVO vo = convertToVO(post);
+            vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
+            return vo;
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new BusinessException(409, "数据冲突，请刷新后重试");
         }
@@ -99,26 +103,46 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<PostDetailVO> getAllPosts(Long userId) {
         List<Post> posts = postRepository.findByStatusNotIn(Arrays.asList("HIDDEN", "DELETED"));
+        if (posts.isEmpty()) return List.of();
 
         List<Long> postIds = posts.stream().map(Post::getId).toList();
-        List<PostReaction> userReactions = (userId != null)
-                ? postReactionRepository.findByPostIdInAndUserId(postIds, userId)
-                : List.of();
 
-        Map<Long, PostReaction.ReactionType> reactionMap = userReactions.stream()
-                .collect(Collectors.toMap(PostReaction::getPostId, PostReaction::getReactionType, (a, b) -> a));
+        // 批量查询用户名
+        List<Long> userIds = posts.stream().map(Post::getUserId).distinct().toList();
+        Map<Long, String> usernameMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(com.snowball.entity.User::getId, com.snowball.entity.User::getUsername));
 
+        // 批量查询评论数
+        Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+
+        // 批量查询赞/踩数
+        Map<Long, Long> likeCountMap = new java.util.HashMap<>();
+        Map<Long, Long> dislikeCountMap = new java.util.HashMap<>();
+        postReactionRepository.countGroupByPostIds(postIds).forEach(row -> {
+            Long pid = (Long) row[0];
+            PostReaction.ReactionType type = (PostReaction.ReactionType) row[1];
+            long cnt = (Long) row[2];
+            if (type == PostReaction.ReactionType.LIKE) likeCountMap.put(pid, cnt);
+            else dislikeCountMap.put(pid, cnt);
+        });
+
+        // 批量查询当前用户的评价状态
+        Map<Long, PostReaction.ReactionType> reactionMap = (userId != null)
+                ? postReactionRepository.findByPostIdInAndUserId(postIds, userId).stream()
+                        .collect(Collectors.toMap(PostReaction::getPostId, PostReaction::getReactionType, (a, b) -> a))
+                : Map.of();
+
+        // 组装 VO
         List<PostDetailVO> voList = posts.stream().map(post -> {
-            PostDetailVO vo = convertToVO(post);
-            long likes = postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.LIKE);
-            long dislikes = postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.DISLIKE);
-            vo.setLikeCount(likes);
-            vo.setDislikeCount(dislikes);
+            PostDetailVO vo = convertToVO(post, usernameMap);
+            vo.setLikeCount(likeCountMap.getOrDefault(post.getId(), 0L));
+            vo.setDislikeCount(dislikeCountMap.getOrDefault(post.getId(), 0L));
+            vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
             vo.setCurrentUserReaction(reactionMap.get(post.getId()) != null ? reactionMap.get(post.getId()).name() : null);
             return vo;
         }).collect(Collectors.toList());
 
-        // 推荐排序
         voList.sort((a, b) -> Double.compare(calcHotScore(b), calcHotScore(a)));
         return voList;
     }
@@ -131,10 +155,28 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public List<PostDetailVO> getUserPosts(Long userId) {
+        List<Post> posts = postRepository.findByUserIdAndStatusNotInOrderByCreatedAtDesc(userId, Arrays.asList("HIDDEN", "DELETED"));
+        if (posts.isEmpty()) return List.of();
+
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+
+        return posts.stream().map(post -> {
+            PostDetailVO vo = convertToVO(post);
+            vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
+            return vo;
+        }).toList();
+    }
+
+    @Override
     public PostDetailVO getPostById(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
-        return convertToVO(post);
+        PostDetailVO vo = convertToVO(post);
+        vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
+        return vo;
     }
 
     @Override
@@ -160,7 +202,9 @@ public class PostServiceImpl implements PostService {
             post.setTitle(dto.getTitle());
             post.setCurrentBody(dto.getBody());
             postRepository.save(post);
-            return convertToVO(post);
+            PostDetailVO vo = convertToVO(post);
+            vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
+            return vo;
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             throw new BusinessException(409, "版本号冲突，请刷新页面后重试");
         } catch (ObjectOptimisticLockingFailureException e) {
@@ -189,6 +233,10 @@ public class PostServiceImpl implements PostService {
     }
 
     public PostDetailVO convertToVO(Post post) {
+        return convertToVO(post, Map.of());
+    }
+
+    private PostDetailVO convertToVO(Post post, Map<Long, String> usernameMap) {
         PostDetailVO vo = new PostDetailVO();
         vo.setId(post.getId());
         vo.setUserId(post.getUserId());
@@ -199,10 +247,12 @@ public class PostServiceImpl implements PostService {
         vo.setVersion(post.getVersion());
         vo.setCreatedAt(post.getCreatedAt());
         vo.setUpdatedAt(post.getUpdatedAt());
-        userRepository.findById(post.getUserId()).ifPresent(user -> {
-            vo.setAuthorName(user.getUsername());
-        });
-        vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
+        String username = usernameMap.get(post.getUserId());
+        if (username != null) {
+            vo.setAuthorName(username);
+        } else {
+            userRepository.findById(post.getUserId()).ifPresent(user -> vo.setAuthorName(user.getUsername()));
+        }
         return vo;
     }
 
@@ -246,6 +296,16 @@ public class PostServiceImpl implements PostService {
         } else {
             posts = postRepository.findByStatusNotIn(hiddenStatuses);
         }
-        return posts.stream().map(this::convertToVO).toList();
+        if (posts.isEmpty()) return List.of();
+
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+
+        return posts.stream().map(post -> {
+            PostDetailVO vo = convertToVO(post);
+            vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
+            return vo;
+        }).toList();
     }
 }

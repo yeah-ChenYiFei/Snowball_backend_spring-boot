@@ -10,6 +10,7 @@ public class WorldVO {
     private String name;
     private String description;
     private String type;
+    private Boolean isPublic;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

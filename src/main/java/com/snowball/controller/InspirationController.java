@@ -5,6 +5,7 @@ import com.snowball.dto.InspirationCreateDTO;
 import com.snowball.dto.InspirationUpdateDTO;
 import com.snowball.service.InspirationService;
 import com.snowball.vo.InspirationVO;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,12 +26,12 @@ public class InspirationController extends BaseController {
     }
 
     @PostMapping
-    public Result<InspirationVO> addInspiration(@RequestBody InspirationCreateDTO dto) {
+    public Result<InspirationVO> addInspiration(@Valid @RequestBody InspirationCreateDTO dto) {
         return Result.success(inspirationService.addInspiration(getCurrentUserId(), dto));
     }
 
     @PutMapping("/{id}")
-    public Result<InspirationVO> updateInspiration(@PathVariable Long id, @RequestBody InspirationUpdateDTO dto) {
+    public Result<InspirationVO> updateInspiration(@PathVariable Long id, @Valid @RequestBody InspirationUpdateDTO dto) {
         return Result.success(inspirationService.updateInspiration(id, getCurrentUserId(), dto));
     }
 

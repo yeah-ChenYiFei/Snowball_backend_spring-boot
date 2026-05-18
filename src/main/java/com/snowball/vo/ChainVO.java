@@ -8,6 +8,7 @@ public class ChainVO {
     private String creatorName;
     private String title;
     private String status;
+    private Long groupId;
     private LocalDateTime createdAt;
     private String firstSegmentBody;
 }

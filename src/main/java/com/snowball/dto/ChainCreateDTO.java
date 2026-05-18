@@ -1,12 +1,13 @@
 package com.snowball.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty; // ✅ 引入 Jackson 的注解
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
 public class ChainCreateDTO {
     private String title;
+    private Long groupId;
 
-    @JsonProperty("first_segment_body") // ✅ 告诉 Spring：前端传下划线没关系，我 Java 内部用驼峰接！
+    @JsonProperty("first_segment_body")
     private String firstSegmentBody;
 }

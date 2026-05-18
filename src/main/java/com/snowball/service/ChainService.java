@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface ChainService {
     List<ChainVO> getAllChains();
+    List<ChainVO> getGroupChains(Long groupId);
     ChainDetailVO getChainDetail(Long chainId);
     ChainVO createChain(Long userId, ChainCreateDTO dto);
     ChainSegmentVO addSegment(Long chainId, Long userId, ChainSegmentCreateDTO dto);

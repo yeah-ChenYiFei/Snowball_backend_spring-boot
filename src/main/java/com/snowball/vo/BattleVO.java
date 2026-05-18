@@ -1,17 +1,18 @@
 package com.snowball.vo;
-
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class ChainDetailVO {
+public class BattleVO {
     private Long id;
+    private Long groupId;
     private Long creatorId;
     private String creatorName;
-    private String title;
+    private String topic;
+    private String description;
+    private LocalDateTime deadline;
     private String status;
-    private Long groupId;
+    private List<BattleEntryVO> entries;
     private LocalDateTime createdAt;
-    private List<ChainSegmentVO> segments;
 }

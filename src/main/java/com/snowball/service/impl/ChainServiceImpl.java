@@ -39,10 +39,31 @@ public class ChainServiceImpl implements ChainService {
             vo.setCreatorId(chain.getCreatorId());
             vo.setTitle(chain.getTitle());
             vo.setStatus(chain.getStatus().name());
+            vo.setGroupId(chain.getGroupId());
             vo.setCreatedAt(chain.getCreatedAt());
 
             userRepository.findById(chain.getCreatorId()).ifPresent(user -> vo.setCreatorName(user.getUsername()));
 
+            List<ChainSegment> segments = segmentRepository.findByChainIdOrderByCreatedAtAsc(chain.getId());
+            if (!segments.isEmpty()) {
+                String body = segments.get(0).getBody();
+                vo.setFirstSegmentBody(body != null && body.length() > 100 ? body.substring(0, 100) + "..." : body);
+            }
+            return vo;
+        }).toList();
+    }
+
+    @Override
+    public List<ChainVO> getGroupChains(Long groupId) {
+        return chainRepository.findByGroupIdOrderByCreatedAtDesc(groupId).stream().map(chain -> {
+            ChainVO vo = new ChainVO();
+            vo.setId(chain.getId());
+            vo.setCreatorId(chain.getCreatorId());
+            vo.setTitle(chain.getTitle());
+            vo.setStatus(chain.getStatus().name());
+            vo.setGroupId(chain.getGroupId());
+            vo.setCreatedAt(chain.getCreatedAt());
+            userRepository.findById(chain.getCreatorId()).ifPresent(user -> vo.setCreatorName(user.getUsername()));
             List<ChainSegment> segments = segmentRepository.findByChainIdOrderByCreatedAtAsc(chain.getId());
             if (!segments.isEmpty()) {
                 String body = segments.get(0).getBody();
@@ -62,6 +83,7 @@ public class ChainServiceImpl implements ChainService {
         vo.setCreatorId(chain.getCreatorId());
         vo.setTitle(chain.getTitle());
         vo.setStatus(chain.getStatus().name());
+        vo.setGroupId(chain.getGroupId());
         vo.setCreatedAt(chain.getCreatedAt());
 
         userRepository.findById(chain.getCreatorId()).ifPresent(user -> vo.setCreatorName(user.getUsername()));
@@ -89,6 +111,7 @@ public class ChainServiceImpl implements ChainService {
         StoryChain chain = new StoryChain();
         chain.setCreatorId(userId);
         chain.setTitle(dto.getTitle());
+        chain.setGroupId(dto.getGroupId());
         chainRepository.save(chain);
 
         ChainSegment seg = new ChainSegment();
@@ -102,6 +125,7 @@ public class ChainServiceImpl implements ChainService {
         vo.setCreatorId(chain.getCreatorId());
         vo.setTitle(chain.getTitle());
         vo.setStatus(chain.getStatus().name());
+        vo.setGroupId(chain.getGroupId());
         vo.setCreatedAt(chain.getCreatedAt());
 
         userRepository.findById(userId).ifPresent(user -> vo.setCreatorName(user.getUsername()));

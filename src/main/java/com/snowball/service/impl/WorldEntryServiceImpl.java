@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.dto.WorldEntryCreateDTO;
 import com.snowball.entity.WorldEntry;
 import com.snowball.repository.WorldEntryRepository;
@@ -67,7 +68,10 @@ public class WorldEntryServiceImpl implements WorldEntryService {
     @Override
     public WorldEntryVO updateEntry(Long entryId, Long userId, WorldEntryCreateDTO dto) {
         WorldEntry entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new RuntimeException("设定条目不存在"));
+                .orElseThrow(() -> new BusinessException(404, "设定条目不存在"));
+        if (!entry.getUserId().equals(userId)) {
+            throw new BusinessException(403, "只能编辑自己的设定条目");
+        }
         entry.setName(dto.getName());
         entry.setType(dto.getType());
         entry.setContent(dto.getContent());
@@ -75,8 +79,13 @@ public class WorldEntryServiceImpl implements WorldEntryService {
     }
 
     @Override
-    public void deleteEntry(Long entryId) {
-        entryRepository.deleteById(entryId);
+    public void deleteEntry(Long entryId, Long userId) {
+        WorldEntry entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new BusinessException(404, "设定条目不存在"));
+        if (!entry.getUserId().equals(userId)) {
+            throw new BusinessException(403, "只能删除自己的设定条目");
+        }
+        entryRepository.delete(entry);
     }
 
     private WorldEntryVO toVO(WorldEntry e) {

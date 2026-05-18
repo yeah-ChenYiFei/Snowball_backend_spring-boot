@@ -52,12 +52,20 @@ public class WorldRelationController extends BaseController {
             @PathVariable Long worldId,
             @PathVariable Long relationId,
             @Valid @RequestBody WorldRelationCreateDTO dto) {
-        return Result.success(relationService.updateRelation(relationId, dto));
+        Long userId = getOptionalUserId();
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
+        return Result.success(relationService.updateRelation(relationId, userId, dto));
     }
 
     @DeleteMapping("/{relationId}")
     public Result<Void> deleteRelation(@PathVariable Long worldId, @PathVariable Long relationId) {
-        relationService.deleteRelation(relationId);
+        Long userId = getOptionalUserId();
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
+        relationService.deleteRelation(relationId, userId);
         return Result.success();
     }
 }

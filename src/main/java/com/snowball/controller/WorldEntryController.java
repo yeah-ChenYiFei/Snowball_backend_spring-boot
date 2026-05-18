@@ -76,7 +76,7 @@ public class WorldEntryController extends BaseController {
             return Result.error(401, "请先登录");
         }
         worldService.checkWorldAccess(worldId, userId);
-        entryService.deleteEntry(entryId);
+        entryService.deleteEntry(entryId, userId);
         return Result.success();
     }
 }

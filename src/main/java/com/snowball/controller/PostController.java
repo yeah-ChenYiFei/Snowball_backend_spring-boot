@@ -34,7 +34,10 @@ public class PostController extends BaseController{
         return Result.success(postService.getAllPosts(userId));
     }
 
-
+    @GetMapping("/mine")
+    public Result<List<PostDetailVO>> getMyPosts() {
+        return Result.success(postService.getUserPosts(getCurrentUserId()));
+    }
 
     @GetMapping("/{id}")
     public Result<PostDetailVO> getPostById(@PathVariable Long id) {

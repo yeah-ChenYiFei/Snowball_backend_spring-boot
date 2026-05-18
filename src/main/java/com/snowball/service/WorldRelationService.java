@@ -9,6 +9,6 @@ public interface WorldRelationService {
     List<WorldRelationVO> getRelations(Long worldId);
     WorldRelationVO getRelation(Long relationId);
     WorldRelationVO createRelation(Long worldId, Long userId, WorldRelationCreateDTO dto);
-    WorldRelationVO updateRelation(Long relationId, WorldRelationCreateDTO dto);
-    void deleteRelation(Long relationId);
+    WorldRelationVO updateRelation(Long relationId, Long userId, WorldRelationCreateDTO dto);
+    void deleteRelation(Long relationId, Long userId);
 }

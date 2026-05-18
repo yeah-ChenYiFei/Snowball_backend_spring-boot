@@ -16,5 +16,7 @@ public class PostCreateDTO {
     @NotBlank(message = "正文不能为空")
     private String body;
 
+    private String chapter;
+
     // tags 和 attachments 先省略，等做标签和文件上传模块时再加
 }

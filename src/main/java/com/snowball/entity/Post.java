@@ -49,5 +49,8 @@ public class Post {
         updatedAt = LocalDateTime.now();
     }
 
-    public enum PostType { OC, SETTING, FRAGMENT, BOOK_INFO }
+    @Column(length = 200)
+    private String chapter;
+
+    public enum PostType { OC, SETTING, FRAGMENT, BOOK_INFO, ESSAY, DIARY, NOVEL }
 }

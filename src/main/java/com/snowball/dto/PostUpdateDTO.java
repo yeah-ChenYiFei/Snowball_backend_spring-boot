@@ -11,5 +11,7 @@ public class PostUpdateDTO {
     @NotBlank(message = "正文不能为空")
     private String body;
 
+    private String chapter;
+
     private String changeSummary = "常规修改"; // 变更摘要，默认值
 }

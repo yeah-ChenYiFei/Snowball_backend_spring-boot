@@ -51,6 +51,7 @@ public class PostServiceImpl implements PostService {
         post.setType(Post.PostType.valueOf(dto.getType()));
         post.setTitle(dto.getTitle());
         post.setCurrentBody(dto.getBody());
+        post.setChapter(dto.getChapter());
         postRepository.save(post);
 
         PostVersion version = new PostVersion();
@@ -201,6 +202,9 @@ public class PostServiceImpl implements PostService {
 
             post.setTitle(dto.getTitle());
             post.setCurrentBody(dto.getBody());
+            if (dto.getChapter() != null) {
+                post.setChapter(dto.getChapter());
+            }
             postRepository.save(post);
             PostDetailVO vo = convertToVO(post);
             vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
@@ -247,6 +251,10 @@ public class PostServiceImpl implements PostService {
         vo.setVersion(post.getVersion());
         vo.setCreatedAt(post.getCreatedAt());
         vo.setUpdatedAt(post.getUpdatedAt());
+        vo.setChapter(post.getChapter());
+        if (post.getCurrentBody() != null) {
+            vo.setWordCount(post.getCurrentBody().length());
+        }
         String username = usernameMap.get(post.getUserId());
         if (username != null) {
             vo.setAuthorName(username);

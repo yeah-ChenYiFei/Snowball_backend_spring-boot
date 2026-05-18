@@ -18,7 +18,9 @@ public class PostDetailVO {
     private Integer commentCount;
     private Long likeCount;           // 赞数
     private Long dislikeCount;        // 踩数
-    private String currentUserReaction; // 当前用户的评价状态："LIKE" / "DISLIKE" / null(未评价)
+    private String currentUserReaction;
+    private String chapter;
+    private Integer wordCount;
 
     // 未来这里还可以加：作者名称、标签列表、评论数等聚合数据
 }

@@ -35,38 +35,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token)) {
             try {
                 Long userId = jwtUtil.getUserIdFromToken(token);
-
-                // ✅ 核心新增：根据 ID 去数据库查出当前用户实体
                 User user = userRepository.findById(userId).orElse(null);
 
                 if (user != null) {
-                    // ✅ 核心逻辑：将数据库里的枚举角色，转为 Spring Security 认识的格式
-                    // 注意：Spring Security 强制要求角色前缀必须有 "ROLE_"
-                    String roleName = "ROLE_" + user.getRole().name(); // 比如 "ROLE_SYS_ADMIN"
-
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(roleName);
-
-                    // ✅ 把带有角色的列表传进去（替换掉原来的 new ArrayList<>()）
+                    String roleName = "ROLE_" + user.getRole().name();
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userId, null, List.of(authority));
-
+                            new UsernamePasswordAuthenticationToken(userId, null,
+                                    List.of(new SimpleGrantedAuthority(roleName)));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    // ✅ 核心修复：如果根据 Token 里的 ID 查不到用户（比如数据库被清空、用户被注销）
-                    // 必须清除上下文并直接返回 401，绝对不能放行！
-                    SecurityContextHolder.clearContext();
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 返回 401 状态码
-                    response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write("{\"code\":401, \"message\":\"Token 无效或用户不存在，请重新登录\"}");
-                    return; // ✅ 关键：直接 return，终止请求，不再往下走 filterChain
                 }
+                // Token valid but user not found — just clear context, don't block.
+                // Spring Security will enforce authentication for non-permitAll paths.
             } catch (Exception e) {
-                // Token 无效或过期，清除上下文并返回 401
                 SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":401, \"message\":\"Token 无效或已过期，请重新登录\"}");
-                return;
+                // Don't block — let Spring Security decide based on path rules.
+                // permitAll() paths work; authenticated() paths get 401 from entry point.
             }
         }
 

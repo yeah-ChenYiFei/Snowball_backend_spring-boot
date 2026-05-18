@@ -10,24 +10,30 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/posts/{postId}/comments")
-public class CommentController extends BaseController { // ✅ 1. 继承基类
+public class CommentController extends BaseController {
 
-    private final CommentService commentService; // ✅ 2. 只找 Service，不找 Repository
+    private final CommentService commentService;
 
     public CommentController(CommentService commentService) {
         this.commentService = commentService;
     }
 
-    // ✅ 3. 查询接口：再也不用写 Map 和 for 循环了！
     @GetMapping
     public Result<List<CommentVO>> getComments(@PathVariable Long postId) {
-        return Result.success(commentService.getCommentsByPostId(postId));
+        Long userId = getOptionalUserId();
+        return Result.success(commentService.getCommentsByPostId(postId, userId));
     }
 
-    // ✅ 4. 保存接口：不用传 Authentication 了，直接调基类方法
     @PostMapping
     public Result<Void> createComment(@PathVariable Long postId, @RequestBody CommentCreateDTO dto) {
         commentService.createComment(postId, getCurrentUserId(), dto);
         return Result.success();
+    }
+
+    @PostMapping("/{commentId}/react")
+    public Result<String> reactToComment(@PathVariable Long postId, @PathVariable Long commentId,
+                                         @RequestParam String type) {
+        commentService.reactToComment(commentId, getCurrentUserId(), type);
+        return Result.success("ok");
     }
 }

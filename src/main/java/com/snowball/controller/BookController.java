@@ -27,4 +27,15 @@ public class BookController extends BaseController {
     public Result<BookVO> addBook(@RequestBody BookCreateDTO dto) {
         return Result.success(bookService.addBook(getCurrentUserId(), dto));
     }
+
+    @PutMapping("/{id}")
+    public Result<BookVO> updateBook(@PathVariable Long id, @RequestBody BookCreateDTO dto) {
+        return Result.success(bookService.updateBook(id, getCurrentUserId(), dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<String> deleteBook(@PathVariable Long id) {
+        bookService.deleteBook(id, getCurrentUserId());
+        return Result.success("删除成功");
+    }
 }

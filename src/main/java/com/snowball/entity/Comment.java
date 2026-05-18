@@ -18,6 +18,10 @@ public class Comment {
     private String body;
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
+    @Column(name = "like_count")
+    private Integer likeCount = 0;
+    @Column(name = "dislike_count")
+    private Integer dislikeCount = 0;
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     @PrePersist

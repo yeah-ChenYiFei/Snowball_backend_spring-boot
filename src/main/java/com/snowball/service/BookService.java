@@ -7,4 +7,8 @@ public interface BookService {
     List<BookVO> getMyBooks(Long userId);
 
     BookVO addBook(Long userId, BookCreateDTO dto);
+
+    BookVO updateBook(Long id, Long userId, BookCreateDTO dto);
+
+    void deleteBook(Long id, Long userId);
 }

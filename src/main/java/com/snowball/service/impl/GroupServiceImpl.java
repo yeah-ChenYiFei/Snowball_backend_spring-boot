@@ -3,6 +3,7 @@ package com.snowball.service.impl;
 import com.snowball.dto.GroupCreateDTO;
 import com.snowball.entity.Group;
 import com.snowball.entity.GroupMember;
+import com.snowball.entity.User;
 import com.snowball.repository.GroupMemberRepository;
 import com.snowball.repository.GroupRepository;
 import com.snowball.repository.UserRepository;
@@ -15,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class GroupServiceImpl implements GroupService {
@@ -44,18 +47,26 @@ public class GroupServiceImpl implements GroupService {
         member.setRole("admin");
         memberRepository.save(member);
 
-        return toVO(group);
+        Map<Long, String> usernameMap = userRepository.findAllById(List.of(userId)).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        return toVO(group, Map.of(group.getId(), 1L), usernameMap);
     }
 
     @Override
     public List<GroupMemberVO> getMembers(Long groupId) {
         List<GroupMember> members = memberRepository.findByGroupId(groupId);
+        if (members.isEmpty()) return List.of();
+
+        List<Long> userIds = members.stream().map(GroupMember::getUserId).distinct().toList();
+        Map<Long, String> usernameMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
         List<GroupMemberVO> voList = new ArrayList<>();
         for (GroupMember m : members) {
             GroupMemberVO vo = new GroupMemberVO();
             vo.setUserId(m.getUserId());
             vo.setRole(m.getRole());
-            userRepository.findById(m.getUserId()).ifPresent(user -> vo.setUsername(user.getUsername()));
+            vo.setUsername(usernameMap.getOrDefault(m.getUserId(), ""));
             voList.add(vo);
         }
         return voList;
@@ -64,7 +75,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public List<GroupVO> getMyGroups(Long userId) {
         List<Group> groups = groupRepository.findByMemberUserId(userId);
-        return groups.stream().map(this::toVO).toList();
+        return batchToVOList(groups);
     }
 
     @Override
@@ -87,8 +98,8 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public List<GroupVO> searchGroups(String query) {
         if (query == null || query.isBlank()) return List.of();
-        return groupRepository.findByNameContainingIgnoreCase(query)
-                .stream().map(this::toVO).toList();
+        List<Group> groups = groupRepository.findByNameContainingIgnoreCase(query);
+        return batchToVOList(groups);
     }
 
     @Override
@@ -144,7 +155,24 @@ public class GroupServiceImpl implements GroupService {
         groupRepository.delete(group);
     }
 
-    private GroupVO toVO(Group group) {
+    private List<GroupVO> batchToVOList(List<Group> groups) {
+        if (groups.isEmpty()) return List.of();
+
+        List<Long> groupIds = groups.stream().map(Group::getId).toList();
+        List<Long> creatorIds = groups.stream().map(Group::getCreatorId).distinct().toList();
+
+        // Batch member counts
+        Map<Long, Long> countMap = memberRepository.countByGroupIdIn(groupIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
+        // Batch usernames
+        Map<Long, String> usernameMap = userRepository.findAllById(creatorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
+        return groups.stream().map(g -> toVO(g, countMap, usernameMap)).toList();
+    }
+
+    private GroupVO toVO(Group group, Map<Long, Long> countMap, Map<Long, String> usernameMap) {
         GroupVO vo = new GroupVO();
         vo.setId(group.getId());
         vo.setName(group.getName());
@@ -152,8 +180,8 @@ public class GroupServiceImpl implements GroupService {
         vo.setCreatorId(group.getCreatorId());
         vo.setIsPrivate(group.getIsPrivate());
         vo.setCreatedAt(group.getCreatedAt());
-        vo.setMemberCount(memberRepository.countByGroupId(group.getId()));
-        userRepository.findById(group.getCreatorId()).ifPresent(user -> vo.setCreatorName(user.getUsername()));
+        vo.setMemberCount(countMap.getOrDefault(group.getId(), 0L));
+        vo.setCreatorName(usernameMap.getOrDefault(group.getCreatorId(), ""));
         return vo;
     }
 }

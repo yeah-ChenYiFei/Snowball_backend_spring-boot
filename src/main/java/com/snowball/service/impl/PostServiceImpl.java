@@ -13,6 +13,7 @@ import com.snowball.repository.PostRepository;
 import com.snowball.repository.PostReactionRepository;
 import com.snowball.repository.PostVersionRepository;
 import com.snowball.repository.UserRepository;
+import com.snowball.service.NotificationService;
 import com.snowball.service.PostService;
 import com.snowball.vo.PostDetailVO;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -34,13 +35,17 @@ public class PostServiceImpl implements PostService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final PostReactionRepository postReactionRepository;
+    private final NotificationService notificationService;
 
-    public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository, UserRepository userRepository, CommentRepository commentRepository, PostReactionRepository postReactionRepository) {
+    public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository,
+                           UserRepository userRepository, CommentRepository commentRepository,
+                           PostReactionRepository postReactionRepository, NotificationService notificationService) {
         this.postRepository = postRepository;
         this.postVersionRepository = postVersionRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.postReactionRepository = postReactionRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -276,6 +281,7 @@ public class PostServiceImpl implements PostService {
         PostReaction.ReactionType newType = PostReaction.ReactionType.valueOf(reactionTypeStr);
         Optional<PostReaction> existing = postReactionRepository.findByPostIdAndUserId(postId, userId);
 
+        boolean isNewLike = false;
         if (existing.isPresent()) {
             PostReaction r = existing.get();
             if (r.getReactionType() == newType) {
@@ -283,6 +289,7 @@ public class PostServiceImpl implements PostService {
             } else {
                 r.setReactionType(newType);
                 postReactionRepository.save(r);
+                if (newType == PostReaction.ReactionType.LIKE) isNewLike = true;
             }
         } else {
             PostReaction r = new PostReaction();
@@ -290,6 +297,16 @@ public class PostServiceImpl implements PostService {
             r.setUserId(userId);
             r.setReactionType(newType);
             postReactionRepository.save(r);
+            if (newType == PostReaction.ReactionType.LIKE) isNewLike = true;
+        }
+
+        if (isNewLike) {
+            Post post = postRepository.findById(postId).orElse(null);
+            if (post != null && !post.getUserId().equals(userId)) {
+                String actorName = userRepository.findById(userId).map(u -> u.getUsername()).orElse("");
+                notificationService.create(post.getUserId(), "LIKE_POST", postId, "POST",
+                        userId, actorName + " 赞了你的帖子");
+            }
         }
     }
     @Override
@@ -300,7 +317,7 @@ public class PostServiceImpl implements PostService {
         if (q != null && !q.isEmpty()) {
             posts = postRepository.findByTitleContainingIgnoreCaseAndStatusNotIn(q, hiddenStatuses);
         } else if (type != null && !type.isEmpty()) {
-            posts = postRepository.findByTypeAndStatusNotIn(type, hiddenStatuses);
+            posts = postRepository.findByTypeAndStatusNotIn(Post.PostType.valueOf(type), hiddenStatuses);
         } else {
             posts = postRepository.findByStatusNotIn(hiddenStatuses);
         }

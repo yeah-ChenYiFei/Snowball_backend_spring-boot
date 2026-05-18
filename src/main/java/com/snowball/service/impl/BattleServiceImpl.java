@@ -5,6 +5,7 @@ import com.snowball.dto.BattleEntryDTO;
 import com.snowball.dto.BattleReviewDTO;
 import com.snowball.entity.BattleEntry;
 import com.snowball.entity.BattleReview;
+import com.snowball.entity.User;
 import com.snowball.entity.WritingBattle;
 import com.snowball.repository.BattleEntryRepository;
 import com.snowball.repository.BattleReviewRepository;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class BattleServiceImpl implements BattleService {
@@ -54,26 +57,38 @@ public class BattleServiceImpl implements BattleService {
         }
         battleRepository.save(battle);
 
-        return toVO(battle);
+        Map<Long, String> usernameMap = userRepository.findAllById(List.of(userId)).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        return toVO(battle, usernameMap);
     }
 
     @Override
     public List<BattleVO> getGroupBattles(Long groupId) {
-        return battleRepository.findByGroupIdOrderByCreatedAtDesc(groupId)
-                .stream().map(this::toVO).toList();
+        List<WritingBattle> battles = battleRepository.findByGroupIdOrderByCreatedAtDesc(groupId);
+        if (battles.isEmpty()) return List.of();
+
+        List<Long> creatorIds = battles.stream().map(WritingBattle::getCreatorId).distinct().toList();
+        Map<Long, String> usernameMap = userRepository.findAllById(creatorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
+        return battles.stream().map(b -> toVO(b, usernameMap)).toList();
     }
 
     @Override
     public BattleVO getBattleDetail(Long battleId) {
         WritingBattle battle = battleRepository.findById(battleId)
                 .orElseThrow(() -> new RuntimeException("擂台不存在"));
-        BattleVO vo = toVO(battle);
+
+        Map<Long, String> usernameMap = userRepository.findAllById(List.of(battle.getCreatorId())).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        BattleVO vo = toVO(battle, usernameMap);
+
         List<BattleEntry> entries = entryRepository.findByBattleIdOrderByCreatedAtAsc(battleId);
-        List<BattleEntryVO> entryVOs = new ArrayList<>();
-        for (BattleEntry e : entries) {
-            entryVOs.add(toEntryVO(e));
+        if (!entries.isEmpty()) {
+            vo.setEntries(batchToEntryVOList(entries));
+        } else {
+            vo.setEntries(List.of());
         }
-        vo.setEntries(entryVOs);
         return vo;
     }
 
@@ -84,7 +99,6 @@ public class BattleServiceImpl implements BattleService {
         if (!"OPEN".equals(battle.getStatus())) {
             throw new RuntimeException("擂台已关闭，无法提交");
         }
-        // Check participant permission
         if (battle.getParticipantIds() != null && !battle.getParticipantIds().isBlank()) {
             boolean isParticipant = java.util.Arrays.stream(battle.getParticipantIds().split(","))
                     .map(String::trim).anyMatch(id -> id.equals(String.valueOf(userId)));
@@ -99,7 +113,9 @@ public class BattleServiceImpl implements BattleService {
         entry.setBody(dto.getBody());
         entryRepository.save(entry);
 
-        return toEntryVO(entry);
+        Map<Long, String> usernameMap = userRepository.findAllById(List.of(userId)).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        return toEntryVO(entry, usernameMap, Map.of());
     }
 
     @Override
@@ -121,7 +137,6 @@ public class BattleServiceImpl implements BattleService {
         review.setComment(dto.getComment());
         reviewRepository.save(review);
 
-        // Update avg score
         List<BattleReview> allReviews = reviewRepository.findByEntryIdOrderByCreatedAtAsc(entryId);
         double avg = allReviews.stream().mapToInt(BattleReview::getScore).average().orElse(0);
         entry.setAvgScore(Math.round(avg * 10.0) / 10.0);
@@ -140,7 +155,7 @@ public class BattleServiceImpl implements BattleService {
         battleRepository.save(battle);
     }
 
-    private BattleVO toVO(WritingBattle b) {
+    private BattleVO toVO(WritingBattle b, Map<Long, String> usernameMap) {
         BattleVO vo = new BattleVO();
         vo.setId(b.getId());
         vo.setGroupId(b.getGroupId());
@@ -150,11 +165,37 @@ public class BattleServiceImpl implements BattleService {
         vo.setDeadline(b.getDeadline());
         vo.setStatus(b.getStatus());
         vo.setCreatedAt(b.getCreatedAt());
-        userRepository.findById(b.getCreatorId()).ifPresent(user -> vo.setCreatorName(user.getUsername()));
+        vo.setCreatorName(usernameMap.getOrDefault(b.getCreatorId(), ""));
         return vo;
     }
 
-    private BattleEntryVO toEntryVO(BattleEntry e) {
+    private List<BattleEntryVO> batchToEntryVOList(List<BattleEntry> entries) {
+        // Collect all entry user IDs and fetch usernames
+        List<Long> entryUserIds = entries.stream().map(BattleEntry::getUserId).distinct().toList();
+        Map<Long, String> usernameMap = userRepository.findAllById(entryUserIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
+        // Batch fetch all reviews for all entries
+        List<Long> entryIds = entries.stream().map(BattleEntry::getId).toList();
+        List<BattleReview> allReviews = reviewRepository.findByEntryIdInOrderByCreatedAtAsc(entryIds);
+
+        // Group reviews by entryId
+        Map<Long, List<BattleReview>> reviewsByEntry = allReviews.stream()
+                .collect(Collectors.groupingBy(BattleReview::getEntryId));
+
+        // Collect all reviewer IDs and batch fetch their usernames
+        List<Long> reviewerIds = allReviews.stream().map(BattleReview::getReviewerId).distinct().toList();
+        Map<Long, String> reviewerNameMap = userRepository.findAllById(reviewerIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
+        return entries.stream()
+                .map(e -> toEntryVO(e, usernameMap, reviewsByEntry, reviewerNameMap))
+                .toList();
+    }
+
+    private BattleEntryVO toEntryVO(BattleEntry e, Map<Long, String> usernameMap,
+                                    Map<Long, List<BattleReview>> reviewsByEntry,
+                                    Map<Long, String> reviewerNameMap) {
         BattleEntryVO vo = new BattleEntryVO();
         vo.setId(e.getId());
         vo.setBattleId(e.getBattleId());
@@ -164,9 +205,9 @@ public class BattleServiceImpl implements BattleService {
         vo.setAvgScore(e.getAvgScore());
         vo.setVoteCount(e.getVoteCount());
         vo.setCreatedAt(e.getCreatedAt());
-        userRepository.findById(e.getUserId()).ifPresent(user -> vo.setUsername(user.getUsername()));
+        vo.setUsername(usernameMap.getOrDefault(e.getUserId(), ""));
 
-        List<BattleReview> reviews = reviewRepository.findByEntryIdOrderByCreatedAtAsc(e.getId());
+        List<BattleReview> reviews = reviewsByEntry.getOrDefault(e.getId(), List.of());
         List<BattleReviewVO> reviewVOs = new ArrayList<>();
         for (BattleReview r : reviews) {
             BattleReviewVO rvo = new BattleReviewVO();
@@ -176,10 +217,25 @@ public class BattleServiceImpl implements BattleService {
             rvo.setScore(r.getScore());
             rvo.setComment(r.getComment());
             rvo.setCreatedAt(r.getCreatedAt());
-            userRepository.findById(r.getReviewerId()).ifPresent(user -> rvo.setReviewerName(user.getUsername()));
+            rvo.setReviewerName(reviewerNameMap.getOrDefault(r.getReviewerId(), ""));
             reviewVOs.add(rvo);
         }
         vo.setReviews(reviewVOs);
         return vo;
+    }
+
+    /** Used for single-entry cases (submitEntry) where we don't have preloaded maps */
+    private BattleEntryVO toEntryVO(BattleEntry e, Map<Long, String> usernameMap,
+                                    Map<Long, List<BattleReview>> reviewsByEntry) {
+        Map<Long, String> reviewerNameMap = Map.of();
+        if (reviewsByEntry.containsKey(e.getId())) {
+            List<Long> rIds = reviewsByEntry.get(e.getId()).stream()
+                    .map(BattleReview::getReviewerId).distinct().toList();
+            if (!rIds.isEmpty()) {
+                reviewerNameMap = userRepository.findAllById(rIds).stream()
+                        .collect(Collectors.toMap(User::getId, User::getUsername));
+            }
+        }
+        return toEntryVO(e, usernameMap, reviewsByEntry, reviewerNameMap);
     }
 }

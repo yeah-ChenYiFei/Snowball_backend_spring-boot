@@ -1,6 +1,7 @@
 package com.snowball.repository;
 
 import com.snowball.entity.Post;
+import com.snowball.entity.Post.PostType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,5 +22,5 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByTitleContainingIgnoreCaseAndStatusNotIn(String title, List<String> excludedStatuses);
 
     // 👇 补上按类型搜索的方法
-    List<Post> findByTypeAndStatusNotIn(String type, List<String> excludedStatuses);
+    List<Post> findByTypeAndStatusNotIn(PostType type, List<String> excludedStatuses);
 }

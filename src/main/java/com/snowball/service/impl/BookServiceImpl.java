@@ -48,4 +48,39 @@ public class BookServiceImpl implements BookService {
         vo.setCoverUrl(book.getCoverUrl());
         return vo;
     }
+
+    @Override
+    public BookVO updateBook(Long id, Long userId, BookCreateDTO dto) {
+        Book book = bookRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("图书记录不存在"));
+        if (!book.getUserId().equals(userId)) {
+            throw new RuntimeException("只能修改自己的图书记录");
+        }
+        book.setTitle(dto.getTitle());
+        book.setAuthor(dto.getAuthor());
+        book.setPrice(dto.getPrice());
+        book.setPurchaseDate(dto.getPurchaseDate());
+        book.setCoverUrl(dto.getCoverUrl());
+        bookRepository.save(book);
+
+        BookVO vo = new BookVO();
+        vo.setId(book.getId());
+        vo.setUserId(book.getUserId());
+        vo.setTitle(book.getTitle());
+        vo.setAuthor(book.getAuthor());
+        vo.setPrice(book.getPrice());
+        vo.setPurchaseDate(book.getPurchaseDate());
+        vo.setCoverUrl(book.getCoverUrl());
+        return vo;
+    }
+
+    @Override
+    public void deleteBook(Long id, Long userId) {
+        Book book = bookRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("图书记录不存在"));
+        if (!book.getUserId().equals(userId)) {
+            throw new RuntimeException("只能删除自己的图书记录");
+        }
+        bookRepository.delete(book);
+    }
 }

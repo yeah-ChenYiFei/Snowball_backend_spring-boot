@@ -15,9 +15,12 @@ public class StoryChain {
 
     @Column(length = 200, nullable = false)
     private String title;
+    @Column(columnDefinition = "TEXT")
+    private String description;
     @Column(length = 20)
     @Enumerated(EnumType.STRING)
     private ChainStatus status = ChainStatus.ONGOING;
+    private LocalDateTime deadline;
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     @PrePersist

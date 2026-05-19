@@ -5,4 +5,5 @@ import java.util.List;
 
 public interface StoryChainRepository extends JpaRepository<StoryChain, Long> {
     List<StoryChain> findByGroupIdOrderByCreatedAtDesc(Long groupId);
+    List<StoryChain> findByGroupIdIsNullOrderByCreatedAtDesc();
 }

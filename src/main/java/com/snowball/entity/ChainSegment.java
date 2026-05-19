@@ -14,6 +14,9 @@ public class ChainSegment {
     private Long userId;
     @Column(columnDefinition = "LONGTEXT", nullable = false)
     private String body;
+    @Column(length = 20)
+    @Enumerated(EnumType.STRING)
+    private SegmentStatus status = SegmentStatus.PENDING;
     @Column(name = "prev_segment_id")
     private Long prevSegmentId;
     @Column(nullable = false)
@@ -22,4 +25,6 @@ public class ChainSegment {
     private LocalDateTime createdAt;
     @PrePersist
     protected void onCreate() { createdAt = LocalDateTime.now(); }
+
+    public enum SegmentStatus { PENDING, APPROVED, REJECTED }
 }

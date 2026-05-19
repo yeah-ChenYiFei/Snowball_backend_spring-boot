@@ -3,10 +3,10 @@ package com.snowball.controller;
 import com.snowball.common.Result;
 import com.snowball.dto.ChainCreateDTO;
 import com.snowball.dto.ChainSegmentCreateDTO;
+import com.snowball.dto.SegmentCommentCreateDTO;
+import com.snowball.dto.SegmentReviewDTO;
 import com.snowball.service.ChainService;
-import com.snowball.vo.ChainDetailVO;
-import com.snowball.vo.ChainSegmentVO;
-import com.snowball.vo.ChainVO;
+import com.snowball.vo.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +21,33 @@ public class ChainController extends BaseController {
         this.chainService = chainService;
     }
 
+    // ===== Public chains =====
+
+    @GetMapping("/public")
+    public Result<List<ChainVO>> getPublicChains() {
+        return Result.success(chainService.getPublicChains());
+    }
+
+    @GetMapping("/public/{chainId}")
+    public Result<ChainDetailVO> getPublicChainDetail(@PathVariable Long chainId) {
+        return Result.success(chainService.getChainDetail(chainId));
+    }
+
+    @PostMapping("/public")
+    public Result<ChainVO> createPublicChain(@RequestBody ChainCreateDTO dto) {
+        dto.setGroupId(null); // enforce public
+        return Result.success(chainService.createChain(getCurrentUserId(), dto));
+    }
+
+    @PostMapping("/public/{chainId}/join")
+    public Result<ChainSegmentVO> joinChain(@PathVariable Long chainId, @RequestBody ChainSegmentCreateDTO dto) {
+        return Result.success(chainService.addSegment(chainId, getCurrentUserId(), dto));
+    }
+
+    // ===== Group chains (existing) =====
+
     @GetMapping
-    public Result<List<ChainVO>> getChains() {
+    public Result<List<ChainVO>> getAllChains() {
         return Result.success(chainService.getAllChains());
     }
 
@@ -39,5 +64,25 @@ public class ChainController extends BaseController {
     @PostMapping("/{chainId}/segments")
     public Result<ChainSegmentVO> addSegment(@PathVariable Long chainId, @RequestBody ChainSegmentCreateDTO dto) {
         return Result.success(chainService.addSegment(chainId, getCurrentUserId(), dto));
+    }
+
+    // ===== Segment comments =====
+
+    @GetMapping("/segments/{segmentId}/comments")
+    public Result<List<SegmentCommentVO>> getComments(@PathVariable Long segmentId) {
+        return Result.success(chainService.getComments(segmentId));
+    }
+
+    @PostMapping("/segments/{segmentId}/comments")
+    public Result<SegmentCommentVO> addComment(@PathVariable Long segmentId, @RequestBody SegmentCommentCreateDTO dto) {
+        return Result.success(chainService.addComment(segmentId, getCurrentUserId(), dto));
+    }
+
+    // ===== Segment review =====
+
+    @PutMapping("/segments/{segmentId}/review")
+    public Result<String> reviewSegment(@PathVariable Long segmentId, @RequestBody SegmentReviewDTO dto) {
+        chainService.reviewSegment(segmentId, getCurrentUserId(), dto.getStatus());
+        return Result.success("ok");
     }
 }

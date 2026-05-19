@@ -7,8 +7,11 @@ public class ChainVO {
     private Long creatorId;
     private String creatorName;
     private String title;
+    private String description;
     private String status;
     private Long groupId;
+    private LocalDateTime deadline;
     private LocalDateTime createdAt;
     private String firstSegmentBody;
+    private int segmentCount;
 }

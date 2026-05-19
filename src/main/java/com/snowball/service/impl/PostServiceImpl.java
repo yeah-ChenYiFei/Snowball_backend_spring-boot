@@ -4,14 +4,17 @@ import com.snowball.common.BusinessException;
 import com.snowball.dto.PostCreateDTO;
 import com.snowball.dto.PostUpdateDTO;
 import com.snowball.entity.Post;
-// ✅ 新增导入
 import com.snowball.entity.PostReaction;
+import com.snowball.entity.PostTag;
 import com.snowball.entity.PostVersion;
+import com.snowball.entity.Tag;
+import com.snowball.entity.User;
 import com.snowball.repository.CommentRepository;
 import com.snowball.repository.PostRepository;
-// ✅ 修复：加上了漏掉的引号
 import com.snowball.repository.PostReactionRepository;
+import com.snowball.repository.PostTagRepository;
 import com.snowball.repository.PostVersionRepository;
+import com.snowball.repository.TagRepository;
 import com.snowball.repository.UserRepository;
 import com.snowball.service.NotificationService;
 import com.snowball.service.PostService;
@@ -20,10 +23,11 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-// ✅ 新增导入
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -36,16 +40,55 @@ public class PostServiceImpl implements PostService {
     private final CommentRepository commentRepository;
     private final PostReactionRepository postReactionRepository;
     private final NotificationService notificationService;
+    private final PostTagRepository postTagRepository;
+    private final TagRepository tagRepository;
 
     public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository,
                            UserRepository userRepository, CommentRepository commentRepository,
-                           PostReactionRepository postReactionRepository, NotificationService notificationService) {
+                           PostReactionRepository postReactionRepository, NotificationService notificationService,
+                           PostTagRepository postTagRepository, TagRepository tagRepository) {
         this.postRepository = postRepository;
         this.postVersionRepository = postVersionRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.postReactionRepository = postReactionRepository;
         this.notificationService = notificationService;
+        this.postTagRepository = postTagRepository;
+        this.tagRepository = tagRepository;
+    }
+
+    private void syncTags(Long postId, List<String> tagNames) {
+        postTagRepository.deleteByPostId(postId);
+        if (tagNames == null || tagNames.isEmpty()) return;
+        for (String name : tagNames) {
+            String trimmed = name.trim();
+            if (trimmed.isEmpty()) continue;
+            Tag tag = tagRepository.findByName(trimmed).orElseGet(() -> {
+                Tag t = new Tag();
+                t.setName(trimmed);
+                return tagRepository.save(t);
+            });
+            PostTag pt = new PostTag();
+            pt.setPostId(postId);
+            pt.setTagId(tag.getId());
+            postTagRepository.save(pt);
+        }
+    }
+
+    private Map<Long, List<String>> batchLoadTags(List<Long> postIds) {
+        List<PostTag> allPt = postTagRepository.findByPostIdIn(postIds);
+        if (allPt.isEmpty()) return Map.of();
+        List<Long> tagIds = allPt.stream().map(PostTag::getTagId).distinct().toList();
+        Map<Long, String> tagNameMap = tagRepository.findAllById(tagIds).stream()
+                .collect(Collectors.toMap(Tag::getId, Tag::getName));
+        Map<Long, List<String>> result = new HashMap<>();
+        for (PostTag pt : allPt) {
+            String name = tagNameMap.get(pt.getTagId());
+            if (name != null) {
+                result.computeIfAbsent(pt.getPostId(), k -> new ArrayList<>()).add(name);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -65,6 +108,8 @@ public class PostServiceImpl implements PostService {
         version.setBodySnapshot(dto.getBody());
         version.setChangeSummary("初始创建");
         postVersionRepository.save(version);
+
+        syncTags(post.getId(), dto.getTags());
 
         PostDetailVO vo = convertToVO(post);
         vo.setCommentCount(0);
@@ -105,26 +150,22 @@ public class PostServiceImpl implements PostService {
         }
     }
 
-    // ✅ 删除了老的空参 getAllPosts() 方法，只保留这个带 userId 的
     @Override
     public List<PostDetailVO> getAllPosts(Long userId) {
         List<Post> posts = postRepository.findByStatusNotIn(Arrays.asList("HIDDEN", "DELETED"));
         if (posts.isEmpty()) return List.of();
 
         List<Long> postIds = posts.stream().map(Post::getId).toList();
+        List<Long> creatorIds = posts.stream().map(Post::getUserId).distinct().toList();
 
-        // 批量查询用户名
-        List<Long> userIds = posts.stream().map(Post::getUserId).distinct().toList();
-        Map<Long, String> usernameMap = userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(com.snowball.entity.User::getId, com.snowball.entity.User::getUsername));
-
-        // 批量查询评论数
+        Map<Long, String> usernameMap = userRepository.findAllById(creatorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
         Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+        Map<Long, List<String>> tagsMap = batchLoadTags(postIds);
 
-        // 批量查询赞/踩数
-        Map<Long, Long> likeCountMap = new java.util.HashMap<>();
-        Map<Long, Long> dislikeCountMap = new java.util.HashMap<>();
+        Map<Long, Long> likeCountMap = new HashMap<>();
+        Map<Long, Long> dislikeCountMap = new HashMap<>();
         postReactionRepository.countGroupByPostIds(postIds).forEach(row -> {
             Long pid = (Long) row[0];
             PostReaction.ReactionType type = (PostReaction.ReactionType) row[1];
@@ -133,15 +174,13 @@ public class PostServiceImpl implements PostService {
             else dislikeCountMap.put(pid, cnt);
         });
 
-        // 批量查询当前用户的评价状态
         Map<Long, PostReaction.ReactionType> reactionMap = (userId != null)
                 ? postReactionRepository.findByPostIdInAndUserId(postIds, userId).stream()
                         .collect(Collectors.toMap(PostReaction::getPostId, PostReaction::getReactionType, (a, b) -> a))
                 : Map.of();
 
-        // 组装 VO
         List<PostDetailVO> voList = posts.stream().map(post -> {
-            PostDetailVO vo = convertToVO(post, usernameMap);
+            PostDetailVO vo = convertToVO(post, usernameMap, tagsMap);
             vo.setLikeCount(likeCountMap.getOrDefault(post.getId(), 0L));
             vo.setDislikeCount(dislikeCountMap.getOrDefault(post.getId(), 0L));
             vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
@@ -168,9 +207,10 @@ public class PostServiceImpl implements PostService {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
         Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+        Map<Long, List<String>> tagsMap = batchLoadTags(postIds);
 
         return posts.stream().map(post -> {
-            PostDetailVO vo = convertToVO(post);
+            PostDetailVO vo = convertToVO(post, Map.of(), tagsMap);
             vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
             return vo;
         }).toList();
@@ -214,6 +254,11 @@ public class PostServiceImpl implements PostService {
                 post.setChapter(dto.getChapter());
             }
             postRepository.save(post);
+
+            if (dto.getTags() != null) {
+                syncTags(post.getId(), dto.getTags());
+            }
+
             PostDetailVO vo = convertToVO(post);
             vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
             return vo;
@@ -245,10 +290,15 @@ public class PostServiceImpl implements PostService {
     }
 
     public PostDetailVO convertToVO(Post post) {
-        return convertToVO(post, Map.of());
+        List<String> tags = postTagRepository.findByPostId(post.getId()).stream()
+                .map(pt -> tagRepository.findById(pt.getTagId()).map(Tag::getName).orElse(null))
+                .filter(name -> name != null)
+                .toList();
+        PostDetailVO vo = convertToVO(post, Map.of(), Map.of(post.getId(), tags));
+        return vo;
     }
 
-    private PostDetailVO convertToVO(Post post, Map<Long, String> usernameMap) {
+    private PostDetailVO convertToVO(Post post, Map<Long, String> usernameMap, Map<Long, List<String>> tagsMap) {
         PostDetailVO vo = new PostDetailVO();
         vo.setId(post.getId());
         vo.setUserId(post.getUserId());
@@ -270,6 +320,7 @@ public class PostServiceImpl implements PostService {
         } else {
             userRepository.findById(post.getUserId()).ifPresent(user -> vo.setAuthorName(user.getUsername()));
         }
+        vo.setTags(tagsMap.getOrDefault(post.getId(), List.of()));
         return vo;
     }
 
@@ -278,7 +329,6 @@ public class PostServiceImpl implements PostService {
         postRepository.deleteById(id);
     }
 
-    // ==================== 新增：评价相关方法 ====================
     @Override
     @Transactional
     public void react(Long postId, Long userId, String reactionTypeStr) {
@@ -313,12 +363,19 @@ public class PostServiceImpl implements PostService {
             }
         }
     }
+
     @Override
-    public List<PostDetailVO> searchPosts(String q, String type) {
+    public List<PostDetailVO> searchPosts(String q, String type, String tag) {
         List<String> hiddenStatuses = List.of("HIDDEN", "DELETED");
         List<Post> posts;
 
-        if (q != null && !q.isEmpty()) {
+        if (tag != null && !tag.isEmpty()) {
+            List<Long> taggedPostIds = postTagRepository.findPostIdsByTagName(tag);
+            if (taggedPostIds.isEmpty()) return List.of();
+            posts = postRepository.findAllById(taggedPostIds).stream()
+                    .filter(p -> !hiddenStatuses.contains(p.getStatus()))
+                    .toList();
+        } else if (q != null && !q.isEmpty()) {
             posts = postRepository.findByTitleContainingIgnoreCaseAndStatusNotIn(q, hiddenStatuses);
         } else if (type != null && !type.isEmpty()) {
             posts = postRepository.findByTypeAndStatusNotIn(Post.PostType.valueOf(type), hiddenStatuses);
@@ -330,9 +387,10 @@ public class PostServiceImpl implements PostService {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
         Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+        Map<Long, List<String>> tagsMap = batchLoadTags(postIds);
 
         return posts.stream().map(post -> {
-            PostDetailVO vo = convertToVO(post);
+            PostDetailVO vo = convertToVO(post, Map.of(), tagsMap);
             vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
             return vo;
         }).toList();

@@ -20,8 +20,8 @@ public class SearchController {
     @GetMapping
     public Result<List<PostDetailVO>> search(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String type) {
-        // ✅ 之前那一大坨 if-else 全删了，一行搞定
-        return Result.success(postService.searchPosts(q, type));
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String tag) {
+        return Result.success(postService.searchPosts(q, type, tag));
     }
 }

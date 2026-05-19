@@ -3,6 +3,8 @@ package com.snowball.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class PostUpdateDTO {
     @NotBlank(message = "标题不能为空")
@@ -13,5 +15,7 @@ public class PostUpdateDTO {
 
     private String chapter;
 
-    private String changeSummary = "常规修改"; // 变更摘要，默认值
+    private String changeSummary = "常规修改";
+
+    private List<String> tags;
 }

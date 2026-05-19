@@ -2,6 +2,7 @@ package com.snowball.vo;
 
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class PostDetailVO {
@@ -23,5 +24,5 @@ public class PostDetailVO {
     private Integer wordCount;
     private Long viewCount;
 
-    // 未来这里还可以加：作者名称、标签列表、评论数等聚合数据
+    private List<String> tags;
 }

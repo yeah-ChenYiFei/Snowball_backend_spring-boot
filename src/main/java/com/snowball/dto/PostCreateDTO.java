@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class PostCreateDTO {
 
@@ -18,5 +20,5 @@ public class PostCreateDTO {
 
     private String chapter;
 
-    // tags 和 attachments 先省略，等做标签和文件上传模块时再加
+    private List<String> tags;
 }

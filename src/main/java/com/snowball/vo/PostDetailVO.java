@@ -21,6 +21,7 @@ public class PostDetailVO {
     private String currentUserReaction;
     private String chapter;
     private Integer wordCount;
+    private Long viewCount;
 
     // 未来这里还可以加：作者名称、标签列表、评论数等聚合数据
 }

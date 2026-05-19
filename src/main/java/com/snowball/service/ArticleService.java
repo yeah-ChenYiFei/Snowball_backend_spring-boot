@@ -12,4 +12,5 @@ public interface ArticleService {
     ArticleVO createArticle(Long userId, ArticleCreateDTO dto);
     ArticleVO updateArticle(Long id, Long userId, ArticleUpdateDTO dto);
     void deleteArticle(Long id, Long userId);
+    int getDiaryStreak(Long userId);
 }

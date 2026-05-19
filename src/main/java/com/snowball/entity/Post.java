@@ -52,5 +52,8 @@ public class Post {
     @Column(length = 200)
     private String chapter;
 
+    @Column(name = "view_count")
+    private Long viewCount = 0L;
+
     public enum PostType { OC, SETTING, FRAGMENT, BOOK_INFO, ESSAY, DIARY, NOVEL }
 }

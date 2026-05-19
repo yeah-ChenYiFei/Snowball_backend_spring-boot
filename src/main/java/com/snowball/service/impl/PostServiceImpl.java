@@ -177,9 +177,12 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    @Transactional
     public PostDetailVO getPostById(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
+        post.setViewCount((post.getViewCount() != null ? post.getViewCount() : 0) + 1);
+        postRepository.save(post);
         PostDetailVO vo = convertToVO(post);
         vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
         return vo;
@@ -257,6 +260,7 @@ public class PostServiceImpl implements PostService {
         vo.setCreatedAt(post.getCreatedAt());
         vo.setUpdatedAt(post.getUpdatedAt());
         vo.setChapter(post.getChapter());
+        vo.setViewCount(post.getViewCount() != null ? post.getViewCount() : 0);
         if (post.getCurrentBody() != null) {
             vo.setWordCount(post.getCurrentBody().length());
         }

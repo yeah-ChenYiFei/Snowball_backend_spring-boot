@@ -103,6 +103,30 @@ public class ArticleServiceImpl implements ArticleService {
         articleRepository.save(article);
     }
 
+    @Override
+    public int getDiaryStreak(Long userId) {
+        List<Article> diaries = articleRepository.findByUserIdAndTypeAndStatusNotOrderByCreatedAtDesc(
+                userId, Article.ArticleType.DIARY, "DELETED");
+        if (diaries.isEmpty()) return 0;
+
+        // Collect distinct dates with diary entries
+        java.util.Set<java.time.LocalDate> diaryDates = diaries.stream()
+                .map(a -> a.getCreatedAt().toLocalDate())
+                .collect(Collectors.toSet());
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        int streak = 0;
+        for (int i = 0; ; i++) {
+            java.time.LocalDate date = today.minusDays(i);
+            if (diaryDates.contains(date)) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }
+
     private ArticleVO toVO(Article a) {
         ArticleVO vo = new ArticleVO();
         vo.setId(a.getId());

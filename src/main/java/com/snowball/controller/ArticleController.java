@@ -47,4 +47,9 @@ public class ArticleController extends BaseController {
         articleService.deleteArticle(id, getCurrentUserId());
         return Result.success();
     }
+
+    @GetMapping("/diary-streak")
+    public Result<Integer> getDiaryStreak() {
+        return Result.success(articleService.getDiaryStreak(getCurrentUserId()));
+    }
 }

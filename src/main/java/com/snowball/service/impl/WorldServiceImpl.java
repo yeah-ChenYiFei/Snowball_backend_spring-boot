@@ -4,10 +4,13 @@ import com.snowball.common.BusinessException;
 import com.snowball.dto.WorldCreateDTO;
 import com.snowball.dto.WorldUpdateDTO;
 import com.snowball.entity.World;
+import com.snowball.entity.WorldCollaborator;
+import com.snowball.repository.WorldCollaboratorRepository;
 import com.snowball.repository.WorldEntryRepository;
 import com.snowball.repository.WorldRelationRepository;
 import com.snowball.repository.WorldRepository;
 import com.snowball.service.WorldService;
+import com.snowball.vo.CollaboratorVO;
 import com.snowball.vo.WorldVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,13 +25,16 @@ public class WorldServiceImpl implements WorldService {
     private final WorldRepository worldRepository;
     private final WorldEntryRepository entryRepository;
     private final WorldRelationRepository relationRepository;
+    private final WorldCollaboratorRepository collaboratorRepository;
 
     public WorldServiceImpl(WorldRepository worldRepository,
                             WorldEntryRepository entryRepository,
-                            WorldRelationRepository relationRepository) {
+                            WorldRelationRepository relationRepository,
+                            WorldCollaboratorRepository collaboratorRepository) {
         this.worldRepository = worldRepository;
         this.entryRepository = entryRepository;
         this.relationRepository = relationRepository;
+        this.collaboratorRepository = collaboratorRepository;
     }
 
     @Override
@@ -39,8 +45,10 @@ public class WorldServiceImpl implements WorldService {
         worlds.addAll(worldRepository.findByUserIdOrderByCreatedAtDesc(userId));
         // 别人公开的世界
         worlds.addAll(worldRepository.findByIsPublicTrueAndUserIdNotOrderByCreatedAtDesc(userId));
+        // 共创的世界
+        worlds.addAll(worldRepository.findByCollaboratorUserId(userId));
 
-        return worlds.stream().map(this::toVO).collect(Collectors.toList());
+        return worlds.stream().map(w -> toVO(w, userId)).collect(Collectors.toList());
     }
 
     @Override
@@ -48,18 +56,20 @@ public class WorldServiceImpl implements WorldService {
         World world = worldRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "世界不存在"));
 
-        // 私有世界只有创建者能看
-        if (Boolean.FALSE.equals(world.getIsPublic()) && !world.getUserId().equals(userId)) {
+        // 私有世界只有创建者或共创者能看
+        if (Boolean.FALSE.equals(world.getIsPublic()) && !world.getUserId().equals(userId)
+                && !collaboratorRepository.existsByWorldIdAndUserId(id, userId)) {
             throw new BusinessException(403, "这个世界是私有的，只有创建者可以查看");
         }
-        return toVO(world);
+        return toVO(world, userId);
     }
 
     @Override
     public void checkWorldAccess(Long worldId, Long userId) {
         World world = worldRepository.findById(worldId)
                 .orElseThrow(() -> new BusinessException(404, "世界不存在"));
-        if (Boolean.FALSE.equals(world.getIsPublic()) && !world.getUserId().equals(userId)) {
+        if (Boolean.FALSE.equals(world.getIsPublic()) && !world.getUserId().equals(userId)
+                && !collaboratorRepository.existsByWorldIdAndUserId(worldId, userId)) {
             throw new BusinessException(403, "这个世界是私有的，只有创建者可以查看");
         }
     }
@@ -75,7 +85,7 @@ public class WorldServiceImpl implements WorldService {
         if (dto.getDescription() != null) world.setDescription(dto.getDescription());
         if (dto.getType() != null) world.setType(dto.getType());
         if (dto.getIsPublic() != null) world.setIsPublic(dto.getIsPublic());
-        return toVO(worldRepository.save(world));
+        return toVO(worldRepository.save(world), userId);
     }
 
     @Override
@@ -99,10 +109,14 @@ public class WorldServiceImpl implements WorldService {
         world.setDescription(dto.getDescription());
         world.setType(dto.getType());
         world.setIsPublic(dto.getIsPublic());
-        return toVO(worldRepository.save(world));
+        return toVO(worldRepository.save(world), userId);
     }
 
     private WorldVO toVO(World w) {
+        return toVO(w, null);
+    }
+
+    private WorldVO toVO(World w, Long currentUserId) {
         WorldVO vo = new WorldVO();
         vo.setId(w.getId());
         vo.setUserId(w.getUserId());
@@ -112,6 +126,22 @@ public class WorldServiceImpl implements WorldService {
         vo.setIsPublic(w.getIsPublic());
         vo.setCreatedAt(w.getCreatedAt());
         vo.setUpdatedAt(w.getUpdatedAt());
+
+        if (currentUserId != null) {
+            vo.setIsOwner(w.getUserId().equals(currentUserId));
+            vo.setIsCollaborator(collaboratorRepository.existsByWorldIdAndUserId(w.getId(), currentUserId));
+
+            List<WorldCollaborator> collabs = collaboratorRepository.findByWorldId(w.getId());
+            if (!collabs.isEmpty()) {
+                vo.setCollaborators(collabs.stream().map(c -> {
+                    CollaboratorVO cv = new CollaboratorVO();
+                    cv.setUserId(c.getUserId());
+                    cv.setRole(c.getRole());
+                    cv.setSince(c.getCreatedAt());
+                    return cv;
+                }).toList());
+            }
+        }
         return vo;
     }
 }

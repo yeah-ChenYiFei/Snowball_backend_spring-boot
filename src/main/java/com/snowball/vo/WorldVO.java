@@ -2,6 +2,7 @@ package com.snowball.vo;
 
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class WorldVO {
@@ -13,4 +14,9 @@ public class WorldVO {
     private Boolean isPublic;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Collaboration fields
+    private List<CollaboratorVO> collaborators;
+    private Boolean isOwner;
+    private Boolean isCollaborator;
 }

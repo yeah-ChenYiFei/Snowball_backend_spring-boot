@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/articles")
@@ -29,7 +30,32 @@ public class ArticleController extends BaseController {
 
     @GetMapping("/{id}")
     public Result<ArticleVO> getArticle(@PathVariable Long id) {
-        return Result.success(articleService.getArticle(id, getCurrentUserId()));
+        return Result.success(articleService.getArticle(id, getOptionalUserId()));
+    }
+
+    @GetMapping("/published")
+    public Result<List<ArticleVO>> getPublishedArticles() {
+        return Result.success(articleService.getPublishedArticles());
+    }
+
+    @PostMapping("/{id}/publish")
+    public Result<ArticleVO> publishArticle(@PathVariable Long id) {
+        return Result.success(articleService.publishArticle(id, getCurrentUserId()));
+    }
+
+    @PostMapping("/{id}/unpublish")
+    public Result<ArticleVO> unpublishArticle(@PathVariable Long id) {
+        return Result.success(articleService.unpublishArticle(id, getCurrentUserId()));
+    }
+
+    @PutMapping("/{id}/bind-world")
+    public Result<ArticleVO> bindWorld(@PathVariable Long id, @RequestBody Map<String, Long> body) {
+        return Result.success(articleService.bindWorld(id, body.get("worldId"), getCurrentUserId()));
+    }
+
+    @DeleteMapping("/{id}/bind-world")
+    public Result<ArticleVO> unbindWorld(@PathVariable Long id) {
+        return Result.success(articleService.unbindWorld(id, getCurrentUserId()));
     }
 
     @PostMapping
@@ -51,5 +77,10 @@ public class ArticleController extends BaseController {
     @GetMapping("/diary-streak")
     public Result<Integer> getDiaryStreak() {
         return Result.success(articleService.getDiaryStreak(getCurrentUserId()));
+    }
+
+    @GetMapping("/by-world/{worldId}")
+    public Result<List<ArticleVO>> getWorldBoundArticles(@PathVariable Long worldId) {
+        return Result.success(articleService.getWorldBoundArticles(worldId));
     }
 }

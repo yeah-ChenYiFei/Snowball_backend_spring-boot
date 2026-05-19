@@ -8,8 +8,14 @@ import java.time.LocalDateTime;
 public class Comment {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "post_id", nullable = false)
+    @Column(name = "post_id")
     private Long postId;
+
+    @Column(name = "source_type", length = 20)
+    private String sourceType = "POST";
+
+    @Column(name = "source_id")
+    private Long sourceId;
     @Column(name = "user_id", nullable = false)
     private Long userId;
     @Column(name = "parent_id")

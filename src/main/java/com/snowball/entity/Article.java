@@ -34,6 +34,15 @@ public class Article {
     @Column(length = 20)
     private String status;
 
+    @Column(name = "is_published")
+    private Boolean isPublished = false;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    @Column(name = "world_id")
+    private Long worldId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

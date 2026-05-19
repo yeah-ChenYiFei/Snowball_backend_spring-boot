@@ -13,6 +13,8 @@ public interface WorldRepository extends JpaRepository<World, Long> {
     List<World> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<World> findByIsPublicTrueAndUserIdNotOrderByCreatedAtDesc(Long userId);
 
+    List<World> findByIsPublicTrue();
+
     @Query("SELECT w FROM World w JOIN WorldCollaborator wc ON w.id = wc.worldId WHERE wc.userId = :userId ORDER BY w.createdAt DESC")
     List<World> findByCollaboratorUserId(@Param("userId") Long userId);
 }

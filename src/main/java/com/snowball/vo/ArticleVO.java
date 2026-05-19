@@ -13,6 +13,10 @@ public class ArticleVO {
     private String status;
     private String chapter;
     private Integer wordCount;
+    private Boolean isPublished;
+    private LocalDateTime publishedAt;
+    private Long worldId;
+    private String worldName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String authorName;

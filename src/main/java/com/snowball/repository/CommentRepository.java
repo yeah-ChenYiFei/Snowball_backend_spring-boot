@@ -9,6 +9,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByPostIdAndIsDeletedFalseOrderByCreatedAtAsc(Long postId);
     int countByPostIdAndIsDeletedFalse(Long postId);
 
+    List<Comment> findBySourceTypeAndSourceIdAndIsDeletedFalseOrderByCreatedAtAsc(String sourceType, Long sourceId);
+    int countBySourceTypeAndSourceIdAndIsDeletedFalse(String sourceType, Long sourceId);
+
     @Query("SELECT c.postId, COUNT(c) FROM Comment c WHERE c.postId IN :postIds AND c.isDeleted = false GROUP BY c.postId")
     List<Object[]> countByPostIdIn(@Param("postIds") List<Long> postIds);
 }

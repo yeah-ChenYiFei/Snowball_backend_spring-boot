@@ -19,4 +19,5 @@ public class WorldVO {
     private List<CollaboratorVO> collaborators;
     private Boolean isOwner;
     private Boolean isCollaborator;
+    private int entryCount;
 }

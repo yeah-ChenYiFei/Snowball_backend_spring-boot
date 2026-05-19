@@ -112,6 +112,44 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    public List<CommentVO> getCommentsBySource(String sourceType, Long sourceId, Long currentUserId) {
+        List<Comment> comments = commentRepository.findBySourceTypeAndSourceIdAndIsDeletedFalseOrderByCreatedAtAsc(sourceType, sourceId);
+        if (comments.isEmpty()) return List.of();
+
+        List<Long> userIds = comments.stream().map(Comment::getUserId).distinct().toList();
+        Map<Long, String> usernameMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
+        List<CommentVO> voList = new ArrayList<>();
+        for (Comment c : comments) {
+            CommentVO vo = new CommentVO();
+            vo.setId(c.getId());
+            vo.setPostId(c.getSourceId());
+            vo.setBody(c.getBody());
+            vo.setParentId(c.getParentId());
+            vo.setUserId(c.getUserId());
+            vo.setAuthorName(usernameMap.getOrDefault(c.getUserId(), ""));
+            vo.setLikeCount(c.getLikeCount() != null ? c.getLikeCount() : 0);
+            vo.setDislikeCount(c.getDislikeCount() != null ? c.getDislikeCount() : 0);
+            vo.setCreatedAt(c.getCreatedAt());
+            voList.add(vo);
+        }
+        return voList;
+    }
+
+    @Override
+    @Transactional
+    public void createGenericComment(String sourceType, Long sourceId, Long userId, CommentCreateDTO dto) {
+        Comment comment = new Comment();
+        comment.setSourceType(sourceType);
+        comment.setSourceId(sourceId);
+        comment.setUserId(userId);
+        comment.setBody(dto.getBody());
+        comment.setParentId(dto.getParentId());
+        commentRepository.save(comment);
+    }
+
+    @Override
     @Transactional
     public void reactToComment(Long commentId, Long userId, String reactionType) {
         Comment comment = commentRepository.findById(commentId)

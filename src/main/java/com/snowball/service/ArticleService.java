@@ -13,4 +13,11 @@ public interface ArticleService {
     ArticleVO updateArticle(Long id, Long userId, ArticleUpdateDTO dto);
     void deleteArticle(Long id, Long userId);
     int getDiaryStreak(Long userId);
+
+    List<ArticleVO> getPublishedArticles();
+    ArticleVO publishArticle(Long id, Long userId);
+    ArticleVO unpublishArticle(Long id, Long userId);
+    ArticleVO bindWorld(Long articleId, Long worldId, Long userId);
+    ArticleVO unbindWorld(Long articleId, Long userId);
+    List<ArticleVO> getWorldBoundArticles(Long worldId);
 }

@@ -20,4 +20,8 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     @Query("SELECT a FROM Article a WHERE a.userId = :userId AND a.type IN :types AND a.status <> :status AND a.title LIKE %:keyword% ORDER BY a.createdAt DESC")
     List<Article> searchByUserIdAndTypesAndTitle(@Param("userId") Long userId, @Param("types") List<Article.ArticleType> types, @Param("keyword") String keyword, @Param("status") String status);
+
+    List<Article> findByIsPublishedTrueAndTypeInOrderByPublishedAtDesc(List<Article.ArticleType> types);
+
+    List<Article> findByWorldId(Long worldId);
 }

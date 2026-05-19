@@ -4,14 +4,17 @@ import com.snowball.common.BusinessException;
 import com.snowball.dto.ArticleCreateDTO;
 import com.snowball.dto.ArticleUpdateDTO;
 import com.snowball.entity.Article;
+import com.snowball.entity.World;
 import com.snowball.repository.ArticleRepository;
 import com.snowball.repository.UserRepository;
+import com.snowball.repository.WorldRepository;
 import com.snowball.service.ArticleService;
 import com.snowball.vo.ArticleVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,10 +24,13 @@ public class ArticleServiceImpl implements ArticleService {
 
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
+    private final WorldRepository worldRepository;
 
-    public ArticleServiceImpl(ArticleRepository articleRepository, UserRepository userRepository) {
+    public ArticleServiceImpl(ArticleRepository articleRepository, UserRepository userRepository,
+                              WorldRepository worldRepository) {
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
+        this.worldRepository = worldRepository;
     }
 
     @Override
@@ -57,6 +63,10 @@ public class ArticleServiceImpl implements ArticleService {
     public ArticleVO getArticle(Long id, Long userId) {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        // Published articles are publicly viewable
+        if (Boolean.TRUE.equals(article.getIsPublished())) {
+            return toVO(article);
+        }
         if (!article.getUserId().equals(userId)) {
             throw new BusinessException(403, "无权查看他人文章");
         }
@@ -109,7 +119,6 @@ public class ArticleServiceImpl implements ArticleService {
                 userId, Article.ArticleType.DIARY, "DELETED");
         if (diaries.isEmpty()) return 0;
 
-        // Collect distinct dates with diary entries
         java.util.Set<java.time.LocalDate> diaryDates = diaries.stream()
                 .map(a -> a.getCreatedAt().toLocalDate())
                 .collect(Collectors.toSet());
@@ -127,6 +136,73 @@ public class ArticleServiceImpl implements ArticleService {
         return streak;
     }
 
+    // ===== Published articles (文阁) =====
+
+    @Override
+    public List<ArticleVO> getPublishedArticles() {
+        List<Article.ArticleType> types = List.of(Article.ArticleType.NOVEL, Article.ArticleType.ESSAY);
+        return articleRepository.findByIsPublishedTrueAndTypeInOrderByPublishedAtDesc(types)
+                .stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public ArticleVO publishArticle(Long id, Long userId) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        if (!article.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作");
+        }
+        article.setIsPublished(true);
+        article.setPublishedAt(LocalDateTime.now());
+        return toVO(articleRepository.save(article));
+    }
+
+    @Override
+    @Transactional
+    public ArticleVO unpublishArticle(Long id, Long userId) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        if (!article.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作");
+        }
+        article.setIsPublished(false);
+        article.setPublishedAt(null);
+        return toVO(articleRepository.save(article));
+    }
+
+    // ===== World binding =====
+
+    @Override
+    @Transactional
+    public ArticleVO bindWorld(Long articleId, Long worldId, Long userId) {
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        if (!article.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作");
+        }
+        article.setWorldId(worldId);
+        return toVO(articleRepository.save(article));
+    }
+
+    @Override
+    @Transactional
+    public ArticleVO unbindWorld(Long articleId, Long userId) {
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        if (!article.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作");
+        }
+        article.setWorldId(null);
+        return toVO(articleRepository.save(article));
+    }
+
+    @Override
+    public List<ArticleVO> getWorldBoundArticles(Long worldId) {
+        return articleRepository.findByWorldId(worldId).stream()
+                .map(this::toVO).collect(Collectors.toList());
+    }
+
     private ArticleVO toVO(Article a) {
         ArticleVO vo = new ArticleVO();
         vo.setId(a.getId());
@@ -138,6 +214,12 @@ public class ArticleServiceImpl implements ArticleService {
         vo.setChapter(a.getChapter());
         if (a.getBody() != null) {
             vo.setWordCount(a.getBody().length());
+        }
+        vo.setIsPublished(a.getIsPublished());
+        vo.setPublishedAt(a.getPublishedAt());
+        vo.setWorldId(a.getWorldId());
+        if (a.getWorldId() != null) {
+            worldRepository.findById(a.getWorldId()).ifPresent(w -> vo.setWorldName(w.getName()));
         }
         vo.setCreatedAt(a.getCreatedAt());
         vo.setUpdatedAt(a.getUpdatedAt());

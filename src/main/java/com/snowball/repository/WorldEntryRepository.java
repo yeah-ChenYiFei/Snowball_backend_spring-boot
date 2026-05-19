@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface WorldEntryRepository extends JpaRepository<WorldEntry, Long> {
 
+    long countByWorldId(Long worldId);
+
     List<WorldEntry> findByWorldIdOrderByCreatedAtDesc(Long worldId);
 
     List<WorldEntry> findByWorldIdAndTypeOrderByCreatedAtDesc(Long worldId, String type);

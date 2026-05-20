@@ -5,6 +5,8 @@ import com.snowball.service.FileStorageService;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +34,8 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Value("${app.upload.allowed-extensions:jpg,jpeg,png,gif,webp,bmp}")
     private String allowedExtensions;
 
+    private static final Logger log = LoggerFactory.getLogger(FileStorageServiceImpl.class);
+
     private MinioClient client;
 
     @PostConstruct
@@ -41,7 +45,14 @@ public class FileStorageServiceImpl implements FileStorageService {
                     .endpoint(endpoint)
                     .credentials(accessKey, secretKey)
                     .build();
+            boolean bucketExists = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+            if (bucketExists) {
+                log.info("MinIO 连接成功 — endpoint: {}, bucket: {}", endpoint, bucket);
+            } else {
+                log.warn("MinIO bucket '{}' 不存在，首次上传时将自动创建", bucket);
+            }
         } catch (Exception e) {
+            log.error("MinIO 连接失败 — endpoint: {}, 原因: {}", endpoint, e.getMessage());
             throw new RuntimeException("MinIO客户端初始化失败", e);
         }
     }

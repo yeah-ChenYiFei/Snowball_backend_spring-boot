@@ -3,15 +3,16 @@ package com.snowball.service.impl;
 import com.snowball.common.BusinessException;
 import com.snowball.service.FileStorageService;
 import io.minio.*;
-import io.minio.http.Method;
+import io.minio.errors.ErrorResponseException;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class FileStorageServiceImpl implements FileStorageService {
@@ -59,17 +60,30 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw new BusinessException(400, "不支持的文件类型: " + extWithoutDot);
         }
 
-        String objectName = subdirectory + "/" + prefix + "_" + ownerId + "_" + UUID.randomUUID().toString().substring(0, 8) + ext;
+        try {
+            byte[] fileBytes = file.getBytes();
 
-        try (InputStream is = file.getInputStream()) {
+            // SHA-256 内容哈希 → 相同文件只存一份
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String hashHex = bytesToHex(digest.digest(fileBytes));
+            String objectName = subdirectory + "/" + hashHex + ext;
+
             ensureBucket();
-            client.putObject(PutObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(objectName)
-                    .stream(is, file.getSize(), -1)
-                    .contentType(file.getContentType())
-                    .build());
+
+            // 已存在则跳过上传
+            boolean exists = objectExists(objectName);
+            if (!exists) {
+                client.putObject(PutObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(objectName)
+                        .stream(new ByteArrayInputStream(fileBytes), fileBytes.length, -1)
+                        .contentType(file.getContentType())
+                        .build());
+            }
+
             return "/api/v1/files/" + bucket + "/" + objectName;
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(500, "文件上传失败: " + e.getMessage());
         }
@@ -100,6 +114,17 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
     }
 
+    private boolean objectExists(String objectName) {
+        try {
+            client.statObject(StatObjectArgs.builder().bucket(bucket).object(objectName).build());
+            return true;
+        } catch (ErrorResponseException e) {
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void ensureBucket() {
         try {
             boolean exists = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
@@ -108,5 +133,13 @@ public class FileStorageServiceImpl implements FileStorageService {
             }
         } catch (Exception ignored) {
         }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 }

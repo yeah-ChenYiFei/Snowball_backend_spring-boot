@@ -19,6 +19,9 @@ public class GroupMessage {
     @Column(columnDefinition = "LONGTEXT", nullable = false)
     private String body;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(length = 20, nullable = false)
     private String type = "CHAT";
     // CHAT | CHAIN_START | CHAIN_SEGMENT | BATTLE_START | BATTLE_ENTRY | SYSTEM

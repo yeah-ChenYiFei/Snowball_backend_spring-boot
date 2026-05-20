@@ -1,19 +1,33 @@
 package com.snowball.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.nio.file.Path;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    @Value("${app.upload.base-dir:uploads}")
+    private String baseDir;
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")  // 只对 API 接口放开跨域
-                .allowedOrigins("http://localhost:5173")  // 前端地址，多个可逗号分隔
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")  // 必须包含 OPTIONS
+        registry.addMapping("/api/**")
+                .allowedOrigins("http://localhost:5173")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true)  // 如果需要带 Cookie/JWT
-                .maxAge(3600);           // 预检缓存1小时，减少 OPTIONS 次数
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String absolutePath = Path.of(baseDir).toAbsolutePath().toUri().toString();
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(absolutePath);
     }
 }

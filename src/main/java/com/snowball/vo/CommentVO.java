@@ -12,6 +12,7 @@ public class CommentVO {
     private Integer likeCount;
     private Integer dislikeCount;
     private String currentUserReaction;
+    private String imageUrl;
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }
@@ -32,6 +33,8 @@ public class CommentVO {
     public void setDislikeCount(Integer dislikeCount) { this.dislikeCount = dislikeCount; }
     public String getCurrentUserReaction() { return currentUserReaction; }
     public void setCurrentUserReaction(String currentUserReaction) { this.currentUserReaction = currentUserReaction; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

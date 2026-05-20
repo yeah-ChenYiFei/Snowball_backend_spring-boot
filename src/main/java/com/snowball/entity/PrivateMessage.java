@@ -21,6 +21,9 @@ public class PrivateMessage {
     @Column(columnDefinition = "LONGTEXT", nullable = false)
     private String body;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "is_read")
     private Boolean isRead = false;
 

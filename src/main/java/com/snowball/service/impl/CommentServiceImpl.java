@@ -71,6 +71,7 @@ public class CommentServiceImpl implements CommentService {
             vo.setLikeCount(c.getLikeCount());
             vo.setDislikeCount(c.getDislikeCount());
             vo.setCurrentUserReaction(reactedCommentIds.contains(c.getId()) ? "LIKE" : null);
+            vo.setImageUrl(c.getImageUrl());
             vo.setCreatedAt(c.getCreatedAt());
             voList.add(vo);
         }
@@ -85,6 +86,7 @@ public class CommentServiceImpl implements CommentService {
         comment.setUserId(userId);
         comment.setBody(dto.getBody());
         comment.setParentId(dto.getParentId());
+        comment.setImageUrl(dto.getImageUrl());
         commentRepository.save(comment);
 
         // Load post owner for notification
@@ -131,6 +133,7 @@ public class CommentServiceImpl implements CommentService {
             vo.setAuthorName(usernameMap.getOrDefault(c.getUserId(), ""));
             vo.setLikeCount(c.getLikeCount() != null ? c.getLikeCount() : 0);
             vo.setDislikeCount(c.getDislikeCount() != null ? c.getDislikeCount() : 0);
+            vo.setImageUrl(c.getImageUrl());
             vo.setCreatedAt(c.getCreatedAt());
             voList.add(vo);
         }
@@ -146,6 +149,7 @@ public class CommentServiceImpl implements CommentService {
         comment.setUserId(userId);
         comment.setBody(dto.getBody());
         comment.setParentId(dto.getParentId());
+        comment.setImageUrl(dto.getImageUrl());
         commentRepository.save(comment);
     }
 

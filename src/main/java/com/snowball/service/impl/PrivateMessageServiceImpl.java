@@ -49,7 +49,7 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
 
     @Override
     @Transactional
-    public PrivateMessageVO sendMessage(Long senderId, Long receiverId, String body) {
+    public PrivateMessageVO sendMessage(Long senderId, Long receiverId, String body, String imageUrl) {
         if (senderId.equals(receiverId)) {
             throw new RuntimeException("不能给自己发消息");
         }
@@ -57,7 +57,8 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
         PrivateMessage msg = new PrivateMessage();
         msg.setSenderId(senderId);
         msg.setReceiverId(receiverId);
-        msg.setBody(body);
+        msg.setBody(body != null ? body : "");
+        msg.setImageUrl(imageUrl);
         msg.setIsRead(false);
         msg = messageRepository.save(msg);
 
@@ -66,6 +67,7 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
         vo.setSenderId(msg.getSenderId());
         vo.setReceiverId(msg.getReceiverId());
         vo.setBody(msg.getBody());
+        vo.setImageUrl(msg.getImageUrl());
         vo.setIsRead(msg.getIsRead());
         vo.setCreatedAt(msg.getCreatedAt());
         userRepository.findById(senderId).ifPresent(u -> vo.setSenderName(u.getUsername()));
@@ -105,6 +107,7 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
             vo.setReceiverId(m.getReceiverId());
             vo.setSenderName(nameMap.getOrDefault(m.getSenderId(), ""));
             vo.setBody(m.getBody());
+            vo.setImageUrl(m.getImageUrl());
             vo.setIsRead(m.getIsRead());
             vo.setCreatedAt(m.getCreatedAt());
             return vo;

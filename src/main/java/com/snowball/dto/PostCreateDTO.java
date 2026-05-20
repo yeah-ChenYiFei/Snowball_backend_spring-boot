@@ -21,4 +21,5 @@ public class PostCreateDTO {
     private String chapter;
 
     private List<String> tags;
+    private List<String> images;
 }

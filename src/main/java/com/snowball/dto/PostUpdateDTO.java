@@ -18,4 +18,5 @@ public class PostUpdateDTO {
     private String changeSummary = "常规修改";
 
     private List<String> tags;
+    private List<String> images;
 }

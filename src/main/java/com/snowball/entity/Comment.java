@@ -28,6 +28,8 @@ public class Comment {
     private Integer likeCount = 0;
     @Column(name = "dislike_count")
     private Integer dislikeCount = 0;
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     @PrePersist

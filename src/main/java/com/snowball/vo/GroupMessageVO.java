@@ -9,6 +9,7 @@ public class GroupMessageVO {
     private Long senderId;
     private String senderName;
     private String body;
+    private String imageUrl;
     private String type;
     private Long refId;
     private String refType;

@@ -100,6 +100,9 @@ public class PostServiceImpl implements PostService {
         post.setTitle(dto.getTitle());
         post.setCurrentBody(dto.getBody());
         post.setChapter(dto.getChapter());
+        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
+            post.setImages(toJson(dto.getImages()));
+        }
         postRepository.save(post);
 
         PostVersion version = new PostVersion();
@@ -258,6 +261,10 @@ public class PostServiceImpl implements PostService {
             if (dto.getTags() != null) {
                 syncTags(post.getId(), dto.getTags());
             }
+            if (dto.getImages() != null) {
+                post.setImages(toJson(dto.getImages()));
+                postRepository.save(post);
+            }
 
             PostDetailVO vo = convertToVO(post);
             vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
@@ -321,7 +328,37 @@ public class PostServiceImpl implements PostService {
             userRepository.findById(post.getUserId()).ifPresent(user -> vo.setAuthorName(user.getUsername()));
         }
         vo.setTags(tagsMap.getOrDefault(post.getId(), List.of()));
+        vo.setImages(fromJson(post.getImages()));
         return vo;
+    }
+
+    private String toJson(List<String> list) {
+        if (list == null || list.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("\"").append(list.get(i).replace("\\", "\\\\").replace("\"", "\\\"")).append("\"");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private List<String> fromJson(String json) {
+        if (json == null || json.isBlank() || json.equals("[]")) return List.of();
+        String inner = json.trim();
+        if (inner.startsWith("[")) inner = inner.substring(1);
+        if (inner.endsWith("]")) inner = inner.substring(0, inner.length() - 1);
+        if (inner.isBlank()) return List.of();
+        List<String> result = new ArrayList<>();
+        for (String part : inner.split(",")) {
+            String url = part.trim();
+            if (url.startsWith("\"") && url.endsWith("\"")) {
+                url = url.substring(1, url.length() - 1);
+                url = url.replace("\\\\", "\\").replace("\\\"", "\"");
+            }
+            if (!url.isBlank()) result.add(url);
+        }
+        return result;
     }
 
     @Override

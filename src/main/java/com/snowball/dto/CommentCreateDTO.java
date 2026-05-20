@@ -6,4 +6,5 @@ import lombok.Data; // ✅ 引入 Lombok
 public class CommentCreateDTO {
     private String body;
     private Long parentId;
+    private String imageUrl;
 }

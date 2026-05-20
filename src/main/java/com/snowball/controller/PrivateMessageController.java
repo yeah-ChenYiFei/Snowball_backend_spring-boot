@@ -35,7 +35,7 @@ public class PrivateMessageController extends BaseController {
     public Result<PrivateMessageVO> sendMessage(
             @PathVariable Long targetUserId,
             @RequestBody PrivateMessageCreateDTO dto) {
-        return Result.success(messageService.sendMessage(getCurrentUserId(), targetUserId, dto.getBody()));
+        return Result.success(messageService.sendMessage(getCurrentUserId(), targetUserId, dto.getBody(), dto.getImageUrl()));
     }
 
     @GetMapping("/unread-count")

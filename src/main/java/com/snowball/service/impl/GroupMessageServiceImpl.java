@@ -50,6 +50,7 @@ public class GroupMessageServiceImpl implements GroupMessageService {
         msg.setGroupId(groupId);
         msg.setSenderId(userId);
         msg.setBody(dto.getBody() != null ? dto.getBody() : "");
+        msg.setImageUrl(dto.getImageUrl());
         msg.setType(dto.getType() != null ? dto.getType() : "CHAT");
         msg.setRefId(dto.getRefId());
         msg.setRefType(dto.getRefType());
@@ -93,6 +94,7 @@ public class GroupMessageServiceImpl implements GroupMessageService {
         vo.setGroupId(m.getGroupId());
         vo.setSenderId(m.getSenderId());
         vo.setBody(m.getBody());
+        vo.setImageUrl(m.getImageUrl());
         vo.setType(m.getType());
         vo.setRefId(m.getRefId());
         vo.setRefType(m.getRefType());

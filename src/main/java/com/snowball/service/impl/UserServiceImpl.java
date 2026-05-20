@@ -6,6 +6,7 @@ import com.snowball.entity.User;
 import com.snowball.repository.UserRepository;
 import com.snowball.security.JwtUtil;
 import com.snowball.service.UserService;
+import com.snowball.service.FileStorageService;
 import com.snowball.service.PostService;
 import com.snowball.service.BookService;
 import com.snowball.vo.UserLoginVO;
@@ -13,6 +14,8 @@ import com.snowball.vo.UserProfileVO;
 import com.snowball.vo.UserVO;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.HashMap;
 import java.util.Map;
 @Service
@@ -22,12 +25,14 @@ public class UserServiceImpl implements UserService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // 对应概要 BCrypt 加密
     private final PostService postService;
     private final BookService bookService;
+    private final FileStorageService fileStorageService;
 
-    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil, PostService postService, BookService bookService) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil, PostService postService, BookService bookService, FileStorageService fileStorageService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.postService = postService;
         this.bookService = bookService;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -88,5 +93,15 @@ public class UserServiceImpl implements UserService {
         profileVO.setBooks(bookService.getMyBooks(userId));
 
         return profileVO;
+    }
+
+    @Override
+    public String uploadAvatar(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
+        String avatarUrl = fileStorageService.saveFile(file, "avatars", "avatar", userId);
+        user.setAvatarUrl(avatarUrl);
+        userRepository.save(user);
+        return avatarUrl;
     }
 }

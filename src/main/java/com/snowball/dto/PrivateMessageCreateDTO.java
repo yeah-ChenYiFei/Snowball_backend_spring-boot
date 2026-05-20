@@ -5,4 +5,5 @@ import lombok.Data;
 @Data
 public class PrivateMessageCreateDTO {
     private String body;
+    private String imageUrl;
 }

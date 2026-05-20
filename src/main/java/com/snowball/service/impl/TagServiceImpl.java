@@ -7,6 +7,7 @@ import com.snowball.repository.TagRepository;
 import com.snowball.service.TagService;
 import com.snowball.vo.TagVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Transactional
     public TagVO createTag(TagCreateDTO dto) {
         if(tagRepository.findByName(dto.getName()).isPresent()) {
             throw new BusinessException(400, "标签已存在");

@@ -4,7 +4,10 @@ import lombok.Data;
 import java.time.LocalDateTime;
 @Data
 @Entity
-@Table(name = "story_chains")
+@Table(name = "story_chains", indexes = {
+    @Index(name = "idx_sc_creator_id", columnList = "creator_id"),
+    @Index(name = "idx_sc_group_id", columnList = "group_id")
+})
 public class StoryChain {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

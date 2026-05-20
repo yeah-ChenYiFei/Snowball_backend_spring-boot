@@ -1,6 +1,7 @@
 package com.snowball.controller;
 
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.PrivateMessageCreateDTO;
 import com.snowball.service.PrivateMessageService;
 import com.snowball.vo.PrivateMessageVO;
@@ -34,7 +35,7 @@ public class PrivateMessageController extends BaseController {
     @PostMapping("/{targetUserId}")
     public Result<PrivateMessageVO> sendMessage(
             @PathVariable Long targetUserId,
-            @RequestBody PrivateMessageCreateDTO dto) {
+            @Valid @RequestBody PrivateMessageCreateDTO dto) {
         return Result.success(messageService.sendMessage(getCurrentUserId(), targetUserId, dto.getBody(), dto.getImageUrl()));
     }
 

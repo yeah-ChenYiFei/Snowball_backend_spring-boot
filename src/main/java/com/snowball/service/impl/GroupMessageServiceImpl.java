@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.dto.GroupMessageCreateDTO;
 import com.snowball.entity.GroupMessage;
 import com.snowball.entity.User;
@@ -9,6 +10,7 @@ import com.snowball.repository.UserRepository;
 import com.snowball.service.GroupMessageService;
 import com.snowball.vo.GroupMessageVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,18 +44,19 @@ public class GroupMessageServiceImpl implements GroupMessageService {
     }
 
     @Override
+    @Transactional
     public GroupMessageVO sendMessage(Long groupId, Long userId, GroupMessageCreateDTO dto) {
         memberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new RuntimeException("你不是该群组成员"));
+                .orElseThrow(() -> new BusinessException(403, "你不是该群组成员"));
 
         GroupMessage msg = new GroupMessage();
         msg.setGroupId(groupId);
         msg.setSenderId(userId);
         msg.setBody(dto.getBody() != null ? dto.getBody() : "");
         msg.setImageUrl(dto.getImageUrl());
-        msg.setType(dto.getType() != null ? dto.getType() : "CHAT");
+        msg.setType(dto.getType() != null ? GroupMessage.MessageType.valueOf(dto.getType()) : GroupMessage.MessageType.CHAT);
         msg.setRefId(dto.getRefId());
-        msg.setRefType(dto.getRefType());
+        msg.setRefType(dto.getRefType() != null ? GroupMessage.RefType.valueOf(dto.getRefType()) : null);
         msg = messageRepository.save(msg);
 
         Map<Long, String> usernameMap = userRepository.findAllById(List.of(userId)).stream()
@@ -62,14 +65,15 @@ public class GroupMessageServiceImpl implements GroupMessageService {
     }
 
     @Override
+    @Transactional
     public void deleteMessage(Long groupId, Long messageId, Long userId, boolean isAdmin) {
         GroupMessage msg = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("消息不存在"));
+                .orElseThrow(() -> new BusinessException(404, "消息不存在"));
         if (!msg.getGroupId().equals(groupId)) {
-            throw new RuntimeException("消息不属于该群组");
+            throw new BusinessException(400, "消息不属于该群组");
         }
         if (!isAdmin && !msg.getSenderId().equals(userId)) {
-            throw new RuntimeException("无权删除他人消息");
+            throw new BusinessException(403, "无权删除他人消息");
         }
         messageRepository.delete(msg);
     }
@@ -95,9 +99,9 @@ public class GroupMessageServiceImpl implements GroupMessageService {
         vo.setSenderId(m.getSenderId());
         vo.setBody(m.getBody());
         vo.setImageUrl(m.getImageUrl());
-        vo.setType(m.getType());
+        vo.setType(m.getType().name());
         vo.setRefId(m.getRefId());
-        vo.setRefType(m.getRefType());
+        vo.setRefType(m.getRefType() != null ? m.getRefType().name() : null);
         vo.setCreatedAt(m.getCreatedAt());
         vo.setSenderName(usernameMap.getOrDefault(m.getSenderId(), ""));
         return vo;

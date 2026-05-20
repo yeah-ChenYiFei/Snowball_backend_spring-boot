@@ -23,15 +23,18 @@ public class GroupMessage {
     private String imageUrl;
 
     @Column(length = 20, nullable = false)
-    private String type = "CHAT";
-    // CHAT | CHAIN_START | CHAIN_SEGMENT | BATTLE_START | BATTLE_ENTRY | SYSTEM
+    @Enumerated(EnumType.STRING)
+    private MessageType type = MessageType.CHAT;
 
     @Column(name = "ref_id")
     private Long refId;
 
     @Column(name = "ref_type", length = 20)
-    private String refType;
-    // CHAIN | BATTLE | null
+    @Enumerated(EnumType.STRING)
+    private RefType refType;
+
+    public enum MessageType { CHAT, CHAIN_START, CHAIN_SEGMENT, BATTLE_START, BATTLE_ENTRY, SYSTEM }
+    public enum RefType { CHAIN, BATTLE }
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

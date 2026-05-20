@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.dto.CommentCreateDTO;
 import com.snowball.entity.Comment;
 import com.snowball.entity.CommentReaction;
@@ -157,7 +158,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void reactToComment(Long commentId, Long userId, String reactionType) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
 
         int curLike = comment.getLikeCount() != null ? comment.getLikeCount() : 0;
         int curDislike = comment.getDislikeCount() != null ? comment.getDislikeCount() : 0;

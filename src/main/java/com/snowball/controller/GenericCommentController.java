@@ -4,6 +4,7 @@ import com.snowball.common.Result;
 import com.snowball.dto.CommentCreateDTO;
 import com.snowball.service.CommentService;
 import com.snowball.vo.CommentVO;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public class GenericCommentController extends BaseController {
     }
 
     @PostMapping
-    public Result<Void> createComment(@RequestBody CommentCreateDTO dto,
+    public Result<Void> createComment(@Valid @RequestBody CommentCreateDTO dto,
                                       @RequestParam String sourceType,
                                       @RequestParam Long sourceId) {
         commentService.createGenericComment(sourceType, sourceId, getCurrentUserId(), dto);

@@ -4,6 +4,7 @@ import com.snowball.common.Result;
 import com.snowball.dto.WorldCollaboratorAddDTO;
 import com.snowball.service.WorldCollaboratorService;
 import com.snowball.vo.CollaboratorVO;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,7 +26,7 @@ public class WorldCollaboratorController extends BaseController {
 
     @PostMapping
     public Result<CollaboratorVO> addCollaborator(@PathVariable Long worldId,
-                                                   @RequestBody WorldCollaboratorAddDTO dto) {
+                                                   @Valid @RequestBody WorldCollaboratorAddDTO dto) {
         return Result.success(collaboratorService.addCollaborator(worldId, getCurrentUserId(), dto.getFriendId()));
     }
 

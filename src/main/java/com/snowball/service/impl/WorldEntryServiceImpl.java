@@ -15,6 +15,7 @@ import com.snowball.service.NotificationService;
 import com.snowball.service.WorldEntryService;
 import com.snowball.vo.WorldEntryVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -72,11 +73,12 @@ public class WorldEntryServiceImpl implements WorldEntryService {
     @Override
     public WorldEntryVO getEntry(Long entryId) {
         WorldEntry entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new RuntimeException("设定条目不存在"));
+                .orElseThrow(() -> new BusinessException(404, "设定条目不存在"));
         return toVO(entry);
     }
 
     @Override
+    @Transactional
     public WorldEntryVO createEntry(Long worldId, Long userId, WorldEntryCreateDTO dto) {
         World world = worldRepository.findById(worldId)
                 .orElseThrow(() -> new BusinessException(404, "世界不存在"));
@@ -87,13 +89,14 @@ public class WorldEntryServiceImpl implements WorldEntryService {
         }
 
         if (collaboratorRepository.existsByWorldIdAndUserId(worldId, userId)) {
-            return createPendingChange(worldId, userId, null, dto.getName(), dto.getType(), dto.getContent(), "CREATE", world);
+            return createPendingChange(worldId, userId, null, dto.getName(), dto.getType(), dto.getContent(), WorldChange.ChangeType.CREATE, world);
         }
 
         throw new BusinessException(403, "无权在此世界创建设定");
     }
 
     @Override
+    @Transactional
     public WorldEntryVO updateEntry(Long entryId, Long userId, WorldEntryCreateDTO dto) {
         WorldEntry entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessException(404, "设定条目不存在"));
@@ -110,13 +113,14 @@ public class WorldEntryServiceImpl implements WorldEntryService {
         }
 
         if (collaboratorRepository.existsByWorldIdAndUserId(worldId, userId)) {
-            return createPendingChange(worldId, userId, entryId, dto.getName(), dto.getType(), dto.getContent(), "UPDATE", world);
+            return createPendingChange(worldId, userId, entryId, dto.getName(), dto.getType(), dto.getContent(), WorldChange.ChangeType.UPDATE, world);
         }
 
         throw new BusinessException(403, "只能编辑自己的设定条目");
     }
 
     @Override
+    @Transactional
     public void deleteEntry(Long entryId, Long userId) {
         WorldEntry entry = entryRepository.findById(entryId)
                 .orElseThrow(() -> new BusinessException(404, "设定条目不存在"));
@@ -131,7 +135,7 @@ public class WorldEntryServiceImpl implements WorldEntryService {
         }
 
         if (collaboratorRepository.existsByWorldIdAndUserId(worldId, userId)) {
-            createPendingChange(worldId, userId, entryId, entry.getName(), entry.getType(), entry.getContent(), "DELETE", world);
+            createPendingChange(worldId, userId, entryId, entry.getName(), entry.getType(), entry.getContent(), WorldChange.ChangeType.DELETE, world);
             return;
         }
 
@@ -150,7 +154,7 @@ public class WorldEntryServiceImpl implements WorldEntryService {
 
     private WorldEntryVO createPendingChange(Long worldId, Long userId, Long entryId,
                                               String name, String type, String content,
-                                              String changeType, World world) {
+                                              WorldChange.ChangeType changeType, World world) {
         WorldChange change = new WorldChange();
         change.setWorldId(worldId);
         change.setUserId(userId);
@@ -159,15 +163,14 @@ public class WorldEntryServiceImpl implements WorldEntryService {
         change.setEntryType(type);
         change.setEntryContent(content);
         change.setChangeType(changeType);
-        change.setStatus("PENDING");
+        change.setStatus(WorldChange.ChangeStatus.PENDING);
         changeRepository.save(change);
 
         String actorName = userRepository.findById(userId).map(User::getUsername).orElse("");
         String actionLabel = switch (changeType) {
-            case "CREATE" -> "新增了一些设定";
-            case "UPDATE" -> "修改了一些设定";
-            case "DELETE" -> "删除了一些设定";
-            default -> "编辑了一些设定";
+            case CREATE -> "新增了一些设定";
+            case UPDATE -> "修改了一些设定";
+            case DELETE -> "删除了一些设定";
         };
         notificationService.create(world.getUserId(), "WORLD_COLLABORATOR_CHANGE", worldId, "WORLD",
                 userId, actorName + "为您的世界「" + world.getName() + "」" + actionLabel);

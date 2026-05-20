@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.dto.GroupCreateDTO;
 import com.snowball.entity.Group;
 import com.snowball.entity.GroupMember;
@@ -81,7 +82,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public GroupDetailVO getGroupDetail(Long groupId) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("群组不存在"));
+                .orElseThrow(() -> new BusinessException(404, "群组不存在"));
         GroupDetailVO vo = new GroupDetailVO();
         vo.setId(group.getId());
         vo.setName(group.getName());
@@ -106,9 +107,9 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void joinGroup(Long groupId, Long userId) {
         groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("群组不存在"));
+                .orElseThrow(() -> new BusinessException(404, "群组不存在"));
         if (memberRepository.findByGroupIdAndUserId(groupId, userId).isPresent()) {
-            throw new RuntimeException("你已经是该群组成员");
+            throw new BusinessException(400, "你已经是该群组成员");
         }
         GroupMember member = new GroupMember();
         member.setGroupId(groupId);
@@ -121,9 +122,9 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void leaveGroup(Long groupId, Long userId) {
         GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new RuntimeException("你不是该群组成员"));
+                .orElseThrow(() -> new BusinessException(404, "你不是该群组成员"));
         if ("admin".equals(member.getRole())) {
-            throw new RuntimeException("群主不能退出，请先转让群主或解散群组");
+            throw new BusinessException(400, "群主不能退出，请先转让群主或解散群组");
         }
         memberRepository.deleteByGroupIdAndUserId(groupId, userId);
     }
@@ -132,14 +133,14 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void kickMember(Long groupId, Long adminId, Long targetUserId) {
         GroupMember adminMember = memberRepository.findByGroupIdAndUserId(groupId, adminId)
-                .orElseThrow(() -> new RuntimeException("你不是该群组成员"));
+                .orElseThrow(() -> new BusinessException(404, "你不是该群组成员"));
         if (!"admin".equals(adminMember.getRole())) {
-            throw new RuntimeException("只有群主可以踢人");
+            throw new BusinessException(403, "只有群主可以踢人");
         }
         GroupMember target = memberRepository.findByGroupIdAndUserId(groupId, targetUserId)
-                .orElseThrow(() -> new RuntimeException("目标用户不在群中"));
+                .orElseThrow(() -> new BusinessException(404, "目标用户不在群中"));
         if ("admin".equals(target.getRole())) {
-            throw new RuntimeException("不能踢出群主");
+            throw new BusinessException(400, "不能踢出群主");
         }
         memberRepository.deleteByGroupIdAndUserId(groupId, targetUserId);
     }
@@ -148,9 +149,9 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void deleteGroup(Long groupId, Long userId) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("群组不存在"));
+                .orElseThrow(() -> new BusinessException(404, "群组不存在"));
         if (!group.getCreatorId().equals(userId)) {
-            throw new RuntimeException("只有群主可以解散群组");
+            throw new BusinessException(403, "只有群主可以解散群组");
         }
         groupRepository.delete(group);
     }
@@ -163,7 +164,7 @@ public class GroupServiceImpl implements GroupService {
 
         // Batch member counts
         Map<Long, Long> countMap = memberRepository.countByGroupIdIn(groupIds).stream()
-                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+                .collect(Collectors.toMap(row -> ((Number) row[0]).longValue(), row -> ((Number) row[1]).longValue()));
 
         // Batch usernames
         Map<Long, String> usernameMap = userRepository.findAllById(creatorIds).stream()

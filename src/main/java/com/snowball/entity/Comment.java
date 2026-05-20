@@ -4,7 +4,11 @@ import lombok.Data;
 import java.time.LocalDateTime;
 @Data
 @Entity
-@Table(name = "comments")
+@Table(name = "comments", indexes = {
+    @Index(name = "idx_comments_post_id", columnList = "post_id"),
+    @Index(name = "idx_comments_user_id", columnList = "user_id"),
+    @Index(name = "idx_comments_parent_id", columnList = "parent_id")
+})
 public class Comment {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

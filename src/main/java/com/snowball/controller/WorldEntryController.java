@@ -1,5 +1,6 @@
 package com.snowball.controller;
 
+import com.snowball.common.BusinessException;
 import com.snowball.common.Result;
 import com.snowball.dto.WorldEntryCreateDTO;
 import com.snowball.service.WorldEntryService;
@@ -52,7 +53,7 @@ public class WorldEntryController extends BaseController {
             @Valid @RequestBody WorldEntryCreateDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return Result.success(entryService.createEntry(worldId, userId, dto));
     }
@@ -64,7 +65,7 @@ public class WorldEntryController extends BaseController {
             @Valid @RequestBody WorldEntryCreateDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return Result.success(entryService.updateEntry(entryId, userId, dto));
     }
@@ -73,7 +74,7 @@ public class WorldEntryController extends BaseController {
     public Result<Void> deleteEntry(@PathVariable Long worldId, @PathVariable Long entryId) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         worldService.checkWorldAccess(worldId, userId);
         entryService.deleteEntry(entryId, userId);

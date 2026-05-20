@@ -1,14 +1,13 @@
 package com.snowball.controller;
 
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.PostCreateDTO;
 import com.snowball.dto.PostUpdateDTO;
 import com.snowball.entity.PostVersion;
 import com.snowball.service.PostService;
 import com.snowball.vo.PostDetailVO;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,12 +44,12 @@ public class PostController extends BaseController{
     }
 
     @PostMapping
-    public Result<PostDetailVO> createPost(@RequestBody PostCreateDTO dto) {
+    public Result<PostDetailVO> createPost(@Valid @RequestBody PostCreateDTO dto) {
         return Result.success(postService.createPost(getCurrentUserId(), dto));
     }
 
     @PutMapping("/{id}")
-    public Result<PostDetailVO> updatePost(@PathVariable Long id, @RequestBody PostUpdateDTO dto) {
+    public Result<PostDetailVO> updatePost(@PathVariable Long id, @Valid @RequestBody PostUpdateDTO dto) {
         return Result.success(postService.updatePost(id, getCurrentUserId(), dto));
     }
 

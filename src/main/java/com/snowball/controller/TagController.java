@@ -1,6 +1,7 @@
 package com.snowball.controller;
 
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.TagCreateDTO;
 import com.snowball.service.TagService;
 import com.snowball.vo.TagVO;
@@ -24,7 +25,7 @@ public class TagController extends BaseController { // ✅ 继承基类
     }
 
     @PostMapping
-    public Result<TagVO> createTag(@RequestBody TagCreateDTO dto) { // ✅ 用 DTO 接收
+    public Result<TagVO> createTag(@Valid @RequestBody TagCreateDTO dto) { // ✅ 用 DTO 接收
         return Result.success(tagService.createTag(dto));
     }
 }

@@ -1,6 +1,8 @@
 package com.snowball.controller;
 
+import com.snowball.common.BusinessException;
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.*;
 import com.snowball.service.*;
 import com.snowball.vo.*;
@@ -45,7 +47,7 @@ public class GroupController extends BaseController {
     }
 
     @PostMapping
-    public Result<GroupVO> createGroup(@RequestBody GroupCreateDTO dto) {
+    public Result<GroupVO> createGroup(@Valid @RequestBody GroupCreateDTO dto) {
         return Result.success(groupService.createGroup(getCurrentUserId(), dto));
     }
 
@@ -92,7 +94,7 @@ public class GroupController extends BaseController {
     @PostMapping("/{groupId}/messages")
     public Result<GroupMessageVO> sendMessage(
             @PathVariable Long groupId,
-            @RequestBody GroupMessageCreateDTO dto) {
+            @Valid @RequestBody GroupMessageCreateDTO dto) {
         return Result.success(messageService.sendMessage(groupId, getCurrentUserId(), dto));
     }
 
@@ -110,7 +112,7 @@ public class GroupController extends BaseController {
     @PostMapping("/{groupId}/chains")
     public Result<ChainVO> createGroupChain(
             @PathVariable Long groupId,
-            @RequestBody ChainCreateDTO dto) {
+            @Valid @RequestBody ChainCreateDTO dto) {
         dto.setGroupId(groupId);
         ChainVO chain = chainService.createChain(getCurrentUserId(), dto);
         // Auto-send group message
@@ -132,7 +134,7 @@ public class GroupController extends BaseController {
     public Result<ChainSegmentVO> addChainSegment(
             @PathVariable Long groupId,
             @PathVariable Long chainId,
-            @RequestBody ChainSegmentCreateDTO dto) {
+            @Valid @RequestBody ChainSegmentCreateDTO dto) {
         ChainSegmentVO seg = chainService.addSegment(chainId, getCurrentUserId(), dto);
         // Auto-send group message
         GroupMessageCreateDTO msg = new GroupMessageCreateDTO();
@@ -150,7 +152,7 @@ public class GroupController extends BaseController {
     @PostMapping("/{groupId}/battles")
     public Result<BattleVO> createBattle(
             @PathVariable Long groupId,
-            @RequestBody BattleCreateDTO dto) {
+            @Valid @RequestBody BattleCreateDTO dto) {
         BattleVO battle = battleService.createBattle(groupId, getCurrentUserId(), dto);
         // Auto-send group message
         GroupMessageCreateDTO msg = new GroupMessageCreateDTO();
@@ -178,7 +180,7 @@ public class GroupController extends BaseController {
     public Result<BattleEntryVO> submitBattleEntry(
             @PathVariable Long groupId,
             @PathVariable Long battleId,
-            @RequestBody BattleEntryDTO dto) {
+            @Valid @RequestBody BattleEntryDTO dto) {
         BattleEntryVO entry = battleService.submitEntry(battleId, getCurrentUserId(), dto);
         // Auto-send group message
         GroupMessageCreateDTO msg = new GroupMessageCreateDTO();
@@ -203,17 +205,13 @@ public class GroupController extends BaseController {
     @PostMapping("/battles/entries/{entryId}/reviews")
     public Result<String> addReview(
             @PathVariable Long entryId,
-            @RequestBody BattleReviewDTO dto) {
+            @Valid @RequestBody BattleReviewDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
-        try {
-            battleService.addReview(entryId, userId, dto);
-            return Result.success("评审已提交");
-        } catch (RuntimeException e) {
-            return Result.error(400, e.getMessage());
-        }
+        battleService.addReview(entryId, userId, dto);
+        return Result.success("评审已提交");
     }
 
     // ===== Helper =====

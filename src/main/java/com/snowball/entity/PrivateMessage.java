@@ -6,7 +6,10 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "private_messages")
+@Table(name = "private_messages", indexes = {
+    @Index(name = "idx_pm_sender_id", columnList = "sender_id"),
+    @Index(name = "idx_pm_receiver_id", columnList = "receiver_id")
+})
 public class PrivateMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -3,7 +3,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 @Data
 @Entity
-@Table(name = "post_tags")
+@Table(name = "post_tags", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"post_id", "tag_id"})
+})
 public class PostTag {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

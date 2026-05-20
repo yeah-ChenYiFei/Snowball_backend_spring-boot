@@ -1,5 +1,6 @@
 package com.snowball.controller;
 
+import com.snowball.common.BusinessException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -12,7 +13,7 @@ public class BaseController {
     protected Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("用户未登录");
+            throw new BusinessException(401, "用户未登录");
         }
         return (Long) authentication.getPrincipal();
     }

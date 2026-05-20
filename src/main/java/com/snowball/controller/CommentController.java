@@ -1,6 +1,7 @@
 package com.snowball.controller;
 
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.CommentCreateDTO;
 import com.snowball.service.CommentService;
 import com.snowball.vo.CommentVO;
@@ -25,7 +26,7 @@ public class CommentController extends BaseController {
     }
 
     @PostMapping
-    public Result<Void> createComment(@PathVariable Long postId, @RequestBody CommentCreateDTO dto) {
+    public Result<Void> createComment(@PathVariable Long postId, @Valid @RequestBody CommentCreateDTO dto) {
         commentService.createComment(postId, getCurrentUserId(), dto);
         return Result.success();
     }

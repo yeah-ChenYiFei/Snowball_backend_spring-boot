@@ -58,7 +58,7 @@ public class FriendServiceImpl implements FriendService {
 
     @Override
     public List<FriendVO> getPendingRequests(Long userId) {
-        List<Friendship> list = friendshipRepository.findByFriendIdAndStatus(userId, "PENDING");
+        List<Friendship> list = friendshipRepository.findByFriendIdAndStatus(userId, Friendship.FriendshipStatus.PENDING);
         if (list.isEmpty()) return List.of();
 
         List<Long> requesterIds = list.stream().map(Friendship::getUserId).distinct().toList();
@@ -93,7 +93,7 @@ public class FriendServiceImpl implements FriendService {
         Optional<Friendship> any = friendshipRepository.findAnyFriendship(userId, targetUserId);
         if (any.isPresent()) {
             Friendship f = any.get();
-            if ("PENDING".equals(f.getStatus())) {
+            if (f.getStatus() == Friendship.FriendshipStatus.PENDING) {
                 if (f.getUserId().equals(userId)) {
                     vo.setStatus("PENDING_TO_THEM");
                 } else {
@@ -118,10 +118,10 @@ public class FriendServiceImpl implements FriendService {
         Optional<Friendship> existing = friendshipRepository.findAnyFriendship(userId, dto.getFriendId());
         if (existing.isPresent()) {
             Friendship f = existing.get();
-            if ("ACCEPTED".equals(f.getStatus())) {
+            if (f.getStatus() == Friendship.FriendshipStatus.ACCEPTED) {
                 throw new BusinessException(400, "已经是好友了");
             }
-            if ("PENDING".equals(f.getStatus())) {
+            if (f.getStatus() == Friendship.FriendshipStatus.PENDING) {
                 throw new BusinessException(400, "已存在待处理的好友请求");
             }
         }
@@ -129,7 +129,7 @@ public class FriendServiceImpl implements FriendService {
         Friendship f = new Friendship();
         f.setUserId(userId);
         f.setFriendId(dto.getFriendId());
-        f.setStatus("PENDING");
+        f.setStatus(Friendship.FriendshipStatus.PENDING);
         f.setSource(dto.getSource() != null ? dto.getSource() : "PROFILE");
         f.setSourceId(dto.getSourceId());
         friendshipRepository.save(f);
@@ -148,10 +148,10 @@ public class FriendServiceImpl implements FriendService {
         if (!f.getFriendId().equals(userId)) {
             throw new BusinessException(403, "无权操作");
         }
-        if (!"PENDING".equals(f.getStatus())) {
+        if (f.getStatus() != Friendship.FriendshipStatus.PENDING) {
             throw new BusinessException(400, "该请求已处理");
         }
-        f.setStatus("ACCEPTED");
+        f.setStatus(Friendship.FriendshipStatus.ACCEPTED);
         friendshipRepository.save(f);
 
         String actorName = userRepository.findById(userId).map(User::getUsername).orElse("");
@@ -167,10 +167,10 @@ public class FriendServiceImpl implements FriendService {
         if (!f.getFriendId().equals(userId)) {
             throw new BusinessException(403, "无权操作");
         }
-        if (!"PENDING".equals(f.getStatus())) {
+        if (f.getStatus() != Friendship.FriendshipStatus.PENDING) {
             throw new BusinessException(400, "该请求已处理");
         }
-        f.setStatus("REJECTED");
+        f.setStatus(Friendship.FriendshipStatus.REJECTED);
         friendshipRepository.save(f);
     }
 

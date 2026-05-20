@@ -4,6 +4,7 @@ import com.snowball.common.Result;
 import com.snowball.dto.RevisionCreateDTO;
 import com.snowball.service.RevisionService;
 import com.snowball.vo.RevisionVO;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public class RevisionController extends BaseController {
     }
 
     @PostMapping("/posts/{postId}/revisions")
-    public Result<RevisionVO> createRevision(@PathVariable Long postId, @RequestBody RevisionCreateDTO dto) {
+    public Result<RevisionVO> createRevision(@PathVariable Long postId, @Valid @RequestBody RevisionCreateDTO dto) {
         return Result.success(revisionService.createRevision(postId, getCurrentUserId(), dto));
     }
 }

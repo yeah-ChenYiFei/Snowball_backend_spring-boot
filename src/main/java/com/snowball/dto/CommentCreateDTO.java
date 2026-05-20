@@ -1,9 +1,12 @@
 package com.snowball.dto;
 
-import lombok.Data; // ✅ 引入 Lombok
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 
-@Data // ✅ 加上这个，删掉下面所有的 getter 和 setter 方法！
+@Data
 public class CommentCreateDTO {
+    @NotBlank(message = "评论内容不能为空")
     private String body;
     private Long parentId;
     private String imageUrl;

@@ -4,7 +4,11 @@ import lombok.Data;
 import java.time.LocalDateTime;
 @Data
 @Entity
-@Table(name = "chain_segments")
+@Table(name = "chain_segments", indexes = {
+    @Index(name = "idx_cs_chain_id", columnList = "chain_id"),
+    @Index(name = "idx_cs_user_id", columnList = "user_id"),
+    @Index(name = "idx_cs_prev_seg_id", columnList = "prev_segment_id")
+})
 public class ChainSegment {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

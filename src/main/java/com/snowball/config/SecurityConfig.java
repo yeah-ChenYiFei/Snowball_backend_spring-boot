@@ -38,12 +38,11 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/files/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/worlds/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/worlds/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/chains/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/chains/public/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/chains/segments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/chain-activities").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/profile").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/groups/**").permitAll()
@@ -53,6 +52,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/articles/by-world/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/comments").permitAll()
                         .anyRequest().authenticated()
+                )
+                .headers(headers -> headers
+                        .contentTypeOptions(c -> c.disable())
+                        .frameOptions(f -> f.deny())
+                        .xssProtection(x -> x.disable())
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 

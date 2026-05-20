@@ -7,7 +7,11 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "friendships",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "friend_id"}))
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "friend_id"}),
+    indexes = {
+        @Index(name = "idx_friendships_user_id", columnList = "user_id"),
+        @Index(name = "idx_friendships_friend_id", columnList = "friend_id")
+    })
 public class Friendship {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,7 +24,10 @@ public class Friendship {
     private Long friendId;
 
     @Column(length = 20, nullable = false)
-    private String status; // PENDING, ACCEPTED, REJECTED
+    @Enumerated(EnumType.STRING)
+    private FriendshipStatus status;
+
+    public enum FriendshipStatus { PENDING, ACCEPTED, REJECTED }
 
     @Column(length = 20, nullable = false)
     private String source; // POST, GROUP, PROFILE

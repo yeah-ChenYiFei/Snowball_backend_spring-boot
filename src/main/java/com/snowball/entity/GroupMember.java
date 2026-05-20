@@ -3,7 +3,10 @@ import jakarta.persistence.*;
 import lombok.Data;
 @Data
 @Entity
-@Table(name = "group_members")
+@Table(name = "group_members", indexes = {
+    @Index(name = "idx_gm_group_id", columnList = "group_id"),
+    @Index(name = "idx_gm_user_id", columnList = "user_id")
+})
 public class GroupMember {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

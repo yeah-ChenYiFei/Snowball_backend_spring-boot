@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.entity.Notification;
 import com.snowball.entity.User;
 import com.snowball.repository.NotificationRepository;
@@ -58,9 +59,9 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void markRead(Long notificationId, Long userId) {
         Notification n = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("通知不存在"));
+                .orElseThrow(() -> new BusinessException(404, "通知不存在"));
         if (!n.getUserId().equals(userId)) {
-            throw new RuntimeException("无权操作");
+            throw new BusinessException(403, "无权操作");
         }
         n.setIsRead(true);
         notificationRepository.save(n);

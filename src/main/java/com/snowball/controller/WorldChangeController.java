@@ -4,6 +4,7 @@ import com.snowball.common.Result;
 import com.snowball.dto.WorldChangeActionDTO;
 import com.snowball.service.WorldChangeService;
 import com.snowball.vo.WorldChangeVO;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class WorldChangeController extends BaseController {
     @PutMapping("/{changeId}/reject")
     public Result<WorldChangeVO> rejectChange(@PathVariable Long worldId,
                                                @PathVariable Long changeId,
-                                               @RequestBody WorldChangeActionDTO dto) {
+                                               @Valid @RequestBody WorldChangeActionDTO dto) {
         return Result.success(changeService.rejectChange(changeId, worldId, getCurrentUserId(), dto.getRejectReason()));
     }
 }

@@ -1,11 +1,13 @@
 // service/impl/BookServiceImpl.java
 package com.snowball.service.impl;
+import com.snowball.common.BusinessException;
 import com.snowball.dto.BookCreateDTO;
 import com.snowball.entity.Book;
 import com.snowball.repository.BookRepository;
 import com.snowball.service.BookService;
 import com.snowball.vo.BookVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 @Service
 public class BookServiceImpl implements BookService {
@@ -28,6 +30,7 @@ public class BookServiceImpl implements BookService {
         }).toList();
     }
     @Override
+    @Transactional
     public BookVO addBook(Long userId, BookCreateDTO dto) {
         Book book = new Book();
         book.setUserId(userId);
@@ -50,11 +53,12 @@ public class BookServiceImpl implements BookService {
     }
 
     @Override
+    @Transactional
     public BookVO updateBook(Long id, Long userId, BookCreateDTO dto) {
         Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("图书记录不存在"));
+                .orElseThrow(() -> new BusinessException(404, "图书记录不存在"));
         if (!book.getUserId().equals(userId)) {
-            throw new RuntimeException("只能修改自己的图书记录");
+            throw new BusinessException(403, "只能修改自己的图书记录");
         }
         book.setTitle(dto.getTitle());
         book.setAuthor(dto.getAuthor());
@@ -75,11 +79,12 @@ public class BookServiceImpl implements BookService {
     }
 
     @Override
+    @Transactional
     public void deleteBook(Long id, Long userId) {
         Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("图书记录不存在"));
+                .orElseThrow(() -> new BusinessException(404, "图书记录不存在"));
         if (!book.getUserId().equals(userId)) {
-            throw new RuntimeException("只能删除自己的图书记录");
+            throw new BusinessException(403, "只能删除自己的图书记录");
         }
         bookRepository.delete(book);
     }

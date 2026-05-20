@@ -1,6 +1,7 @@
 package com.snowball.controller;
 
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.BookCreateDTO;
 import com.snowball.service.BookService;
 import com.snowball.vo.BookVO;
@@ -24,12 +25,12 @@ public class BookController extends BaseController {
     }
 
     @PostMapping
-    public Result<BookVO> addBook(@RequestBody BookCreateDTO dto) {
+    public Result<BookVO> addBook(@Valid @RequestBody BookCreateDTO dto) {
         return Result.success(bookService.addBook(getCurrentUserId(), dto));
     }
 
     @PutMapping("/{id}")
-    public Result<BookVO> updateBook(@PathVariable Long id, @RequestBody BookCreateDTO dto) {
+    public Result<BookVO> updateBook(@PathVariable Long id, @Valid @RequestBody BookCreateDTO dto) {
         return Result.success(bookService.updateBook(id, getCurrentUserId(), dto));
     }
 

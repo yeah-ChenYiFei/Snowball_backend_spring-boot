@@ -22,7 +22,7 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
         "(f.userId = :userId OR f.friendId = :userId)")
     List<Friendship> findAllFriends(@Param("userId") Long userId);
 
-    List<Friendship> findByFriendIdAndStatus(Long friendId, String status);
+    List<Friendship> findByFriendIdAndStatus(Long friendId, Friendship.FriendshipStatus status);
 
-    List<Friendship> findByUserIdAndStatus(Long userId, String status);
+    List<Friendship> findByUserIdAndStatus(Long userId, Friendship.FriendshipStatus status);
 }

@@ -35,9 +35,11 @@ target/
 # macOS
 .DS_Store
 
-# Application properties (if you have sensitive info, otherwise ignore this)
-# application.properties
-# application-dev.properties
+# Application properties (sensitive credentials)
+# application.properties.example
 src/main/resources/application.properties
+src/main/resources/application-dev.properties
+src/main/resources/application-prod.properties
 
 README_*
+problem/

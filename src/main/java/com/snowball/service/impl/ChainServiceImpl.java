@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.dto.ChainCreateDTO;
 import com.snowball.dto.ChainSegmentCreateDTO;
 import com.snowball.dto.SegmentCommentCreateDTO;
@@ -72,7 +73,7 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public ChainDetailVO getChainDetail(Long chainId) {
         StoryChain chain = chainRepository.findById(chainId)
-                .orElseThrow(() -> new RuntimeException("接龙不存在"));
+                .orElseThrow(() -> new BusinessException(404, "接龙不存在"));
 
         ChainDetailVO vo = new ChainDetailVO();
         vo.setId(chain.getId());
@@ -130,7 +131,7 @@ public class ChainServiceImpl implements ChainService {
     @Transactional
     public ChainSegmentVO addSegment(Long chainId, Long userId, ChainSegmentCreateDTO dto) {
         StoryChain chain = chainRepository.findById(chainId)
-                .orElseThrow(() -> new RuntimeException("接龙不存在"));
+                .orElseThrow(() -> new BusinessException(404, "接龙不存在"));
 
         ChainSegment seg = new ChainSegment();
         seg.setChainId(chainId);
@@ -190,13 +191,13 @@ public class ChainServiceImpl implements ChainService {
     @Transactional
     public void reviewSegment(Long segmentId, Long reviewerUserId, String status) {
         ChainSegment seg = segmentRepository.findById(segmentId)
-                .orElseThrow(() -> new RuntimeException("段落不存在"));
+                .orElseThrow(() -> new BusinessException(404, "段落不存在"));
 
         StoryChain chain = chainRepository.findById(seg.getChainId())
-                .orElseThrow(() -> new RuntimeException("接龙不存在"));
+                .orElseThrow(() -> new BusinessException(404, "接龙不存在"));
 
         if (!chain.getCreatorId().equals(reviewerUserId)) {
-            throw new RuntimeException("只有发起人可以审核");
+            throw new BusinessException(403, "只有发起人可以审核");
         }
 
         seg.setStatus(ChainSegment.SegmentStatus.valueOf(status));

@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.dto.BattleCreateDTO;
 import com.snowball.dto.BattleEntryDTO;
 import com.snowball.dto.BattleReviewDTO;
@@ -50,7 +51,7 @@ public class BattleServiceImpl implements BattleService {
         battle.setTopic(dto.getTopic());
         battle.setDescription(dto.getDescription());
         battle.setDeadline(dto.getDeadline());
-        battle.setStatus("OPEN");
+        battle.setStatus(WritingBattle.BattleStatus.OPEN);
         if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty()) {
             battle.setParticipantIds(dto.getParticipantIds().stream()
                     .map(String::valueOf).reduce((a, b) -> a + "," + b).orElse(""));
@@ -77,7 +78,7 @@ public class BattleServiceImpl implements BattleService {
     @Override
     public BattleVO getBattleDetail(Long battleId) {
         WritingBattle battle = battleRepository.findById(battleId)
-                .orElseThrow(() -> new RuntimeException("擂台不存在"));
+                .orElseThrow(() -> new BusinessException(404, "擂台不存在"));
 
         Map<Long, String> usernameMap = userRepository.findAllById(List.of(battle.getCreatorId())).stream()
                 .collect(Collectors.toMap(User::getId, User::getUsername));
@@ -95,15 +96,15 @@ public class BattleServiceImpl implements BattleService {
     @Override
     public BattleEntryVO submitEntry(Long battleId, Long userId, BattleEntryDTO dto) {
         WritingBattle battle = battleRepository.findById(battleId)
-                .orElseThrow(() -> new RuntimeException("擂台不存在"));
-        if (!"OPEN".equals(battle.getStatus())) {
-            throw new RuntimeException("擂台已关闭，无法提交");
+                .orElseThrow(() -> new BusinessException(404, "擂台不存在"));
+        if (battle.getStatus() != WritingBattle.BattleStatus.OPEN) {
+            throw new BusinessException(400, "擂台已关闭，无法提交");
         }
         if (battle.getParticipantIds() != null && !battle.getParticipantIds().isBlank()) {
             boolean isParticipant = java.util.Arrays.stream(battle.getParticipantIds().split(","))
                     .map(String::trim).anyMatch(id -> id.equals(String.valueOf(userId)));
             if (!isParticipant) {
-                throw new RuntimeException("你未被邀请参加此擂台");
+                throw new BusinessException(403, "你未被邀请参加此擂台");
             }
         }
         BattleEntry entry = new BattleEntry();
@@ -121,14 +122,14 @@ public class BattleServiceImpl implements BattleService {
     @Override
     public void addReview(Long entryId, Long reviewerId, BattleReviewDTO dto) {
         BattleEntry entry = entryRepository.findById(entryId)
-                .orElseThrow(() -> new RuntimeException("参赛作品不存在"));
+                .orElseThrow(() -> new BusinessException(404, "参赛作品不存在"));
         WritingBattle battle = battleRepository.findById(entry.getBattleId())
-                .orElseThrow(() -> new RuntimeException("擂台不存在"));
-        if (!"VOTING".equals(battle.getStatus()) && !"CLOSED".equals(battle.getStatus())) {
-            throw new RuntimeException("当前阶段不能评审");
+                .orElseThrow(() -> new BusinessException(404, "擂台不存在"));
+        if (battle.getStatus() != WritingBattle.BattleStatus.VOTING && battle.getStatus() != WritingBattle.BattleStatus.CLOSED) {
+            throw new BusinessException(400, "当前阶段不能评审");
         }
         if (dto.getScore() == null || dto.getScore() < 1 || dto.getScore() > 10) {
-            throw new RuntimeException("评分需在1-10之间");
+            throw new BusinessException(400, "评分需在1-10之间");
         }
         BattleReview review = new BattleReview();
         review.setEntryId(entryId);
@@ -147,11 +148,11 @@ public class BattleServiceImpl implements BattleService {
     @Override
     public void closeBattle(Long battleId, Long userId) {
         WritingBattle battle = battleRepository.findById(battleId)
-                .orElseThrow(() -> new RuntimeException("擂台不存在"));
+                .orElseThrow(() -> new BusinessException(404, "擂台不存在"));
         if (!battle.getCreatorId().equals(userId)) {
-            throw new RuntimeException("只有发起人可以关闭擂台");
+            throw new BusinessException(403, "只有发起人可以关闭擂台");
         }
-        battle.setStatus("VOTING");
+        battle.setStatus(WritingBattle.BattleStatus.VOTING);
         battleRepository.save(battle);
     }
 
@@ -163,7 +164,7 @@ public class BattleServiceImpl implements BattleService {
         vo.setTopic(b.getTopic());
         vo.setDescription(b.getDescription());
         vo.setDeadline(b.getDeadline());
-        vo.setStatus(b.getStatus());
+        vo.setStatus(b.getStatus().name());
         vo.setCreatedAt(b.getCreatedAt());
         vo.setCreatorName(usernameMap.getOrDefault(b.getCreatorId(), ""));
         return vo;

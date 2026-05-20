@@ -1,5 +1,6 @@
 package com.snowball.controller;
 
+import com.snowball.common.BusinessException;
 import com.snowball.common.Result;
 import com.snowball.dto.WorldCreateDTO;
 import com.snowball.dto.WorldUpdateDTO;
@@ -47,16 +48,16 @@ public class WorldController extends BaseController {
     public Result<WorldVO> createWorld(@Valid @RequestBody WorldCreateDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return Result.success(worldService.createWorld(userId, dto));
     }
 
     @PutMapping("/{id}")
-    public Result<WorldVO> updateWorld(@PathVariable Long id, @RequestBody WorldUpdateDTO dto) {
+    public Result<WorldVO> updateWorld(@PathVariable Long id, @Valid @RequestBody WorldUpdateDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return Result.success(worldService.updateWorld(id, userId, dto));
     }
@@ -65,7 +66,7 @@ public class WorldController extends BaseController {
     public Result<Void> deleteWorld(@PathVariable Long id) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         worldService.deleteWorld(id, userId);
         return Result.success();

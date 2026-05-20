@@ -79,6 +79,7 @@ public class WorldServiceImpl implements WorldService {
     }
 
     @Override
+    @Transactional
     public WorldVO updateWorld(Long worldId, Long userId, WorldUpdateDTO dto) {
         World world = worldRepository.findById(worldId)
                 .orElseThrow(() -> new BusinessException(404, "世界不存在"));
@@ -106,6 +107,7 @@ public class WorldServiceImpl implements WorldService {
     }
 
     @Override
+    @Transactional
     public WorldVO createWorld(Long userId, WorldCreateDTO dto) {
         World world = new World();
         world.setUserId(userId);
@@ -190,7 +192,7 @@ public class WorldServiceImpl implements WorldService {
             WorldCollaborator collab = new WorldCollaborator();
             collab.setWorldId(world.getId());
             collab.setUserId(req.getApplicantId());
-            collab.setRole("collaborator");
+            collab.setRole("COLLABORATOR");
             collaboratorRepository.save(collab);
         }
     }

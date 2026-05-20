@@ -29,8 +29,10 @@ public class WritingBattle {
     private String participantIds; // comma-separated user IDs
 
     @Column(length = 20, nullable = false)
-    private String status = "OPEN";
-    // OPEN | VOTING | CLOSED
+    @Enumerated(EnumType.STRING)
+    private BattleStatus status = BattleStatus.OPEN;
+
+    public enum BattleStatus { OPEN, VOTING, CLOSED }
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

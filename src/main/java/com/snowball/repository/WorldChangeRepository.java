@@ -10,7 +10,7 @@ public interface WorldChangeRepository extends JpaRepository<WorldChange, Long> 
 
     List<WorldChange> findByWorldIdOrderByCreatedAtDesc(Long worldId);
 
-    List<WorldChange> findByWorldIdAndStatusOrderByCreatedAtDesc(Long worldId, String status);
+    List<WorldChange> findByWorldIdAndStatusOrderByCreatedAtDesc(Long worldId, WorldChange.ChangeStatus status);
 
     Optional<WorldChange> findByIdAndWorldId(Long id, Long worldId);
 }

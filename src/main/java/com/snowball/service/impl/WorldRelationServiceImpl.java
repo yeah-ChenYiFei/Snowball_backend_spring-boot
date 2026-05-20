@@ -11,6 +11,7 @@ import com.snowball.repository.WorldRepository;
 import com.snowball.service.WorldRelationService;
 import com.snowball.vo.WorldRelationVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,11 +40,12 @@ public class WorldRelationServiceImpl implements WorldRelationService {
     @Override
     public WorldRelationVO getRelation(Long relationId) {
         WorldRelation rel = relationRepository.findById(relationId)
-                .orElseThrow(() -> new RuntimeException("关系不存在"));
+                .orElseThrow(() -> new BusinessException(404, "关系不存在"));
         return toVO(rel);
     }
 
     @Override
+    @Transactional
     public WorldRelationVO createRelation(Long worldId, Long userId, WorldRelationCreateDTO dto) {
         WorldRelation rel = new WorldRelation();
         rel.setWorldId(worldId);
@@ -55,6 +57,7 @@ public class WorldRelationServiceImpl implements WorldRelationService {
     }
 
     @Override
+    @Transactional
     public WorldRelationVO updateRelation(Long relationId, Long userId, WorldRelationCreateDTO dto) {
         WorldRelation rel = relationRepository.findById(relationId)
                 .orElseThrow(() -> new BusinessException(404, "关系不存在"));
@@ -71,6 +74,7 @@ public class WorldRelationServiceImpl implements WorldRelationService {
     }
 
     @Override
+    @Transactional
     public void deleteRelation(Long relationId, Long userId) {
         WorldRelation rel = relationRepository.findById(relationId)
                 .orElseThrow(() -> new BusinessException(404, "关系不存在"));

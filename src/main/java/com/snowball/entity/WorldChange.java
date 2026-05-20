@@ -31,10 +31,15 @@ public class WorldChange {
     private String entryContent;
 
     @Column(name = "change_type", length = 20, nullable = false)
-    private String changeType; // CREATE, UPDATE, DELETE
+    @Enumerated(EnumType.STRING)
+    private ChangeType changeType;
 
     @Column(length = 20, nullable = false)
-    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+    @Enumerated(EnumType.STRING)
+    private ChangeStatus status = ChangeStatus.PENDING;
+
+    public enum ChangeType { CREATE, UPDATE, DELETE }
+    public enum ChangeStatus { PENDING, APPROVED, REJECTED }
 
     @Column(name = "reviewed_by")
     private Long reviewedBy;

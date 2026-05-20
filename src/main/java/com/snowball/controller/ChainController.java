@@ -7,6 +7,7 @@ import com.snowball.dto.SegmentCommentCreateDTO;
 import com.snowball.dto.SegmentReviewDTO;
 import com.snowball.service.ChainService;
 import com.snowball.vo.*;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,13 +35,13 @@ public class ChainController extends BaseController {
     }
 
     @PostMapping("/public")
-    public Result<ChainVO> createPublicChain(@RequestBody ChainCreateDTO dto) {
+    public Result<ChainVO> createPublicChain(@Valid @RequestBody ChainCreateDTO dto) {
         dto.setGroupId(null); // enforce public
         return Result.success(chainService.createChain(getCurrentUserId(), dto));
     }
 
     @PostMapping("/public/{chainId}/join")
-    public Result<ChainSegmentVO> joinChain(@PathVariable Long chainId, @RequestBody ChainSegmentCreateDTO dto) {
+    public Result<ChainSegmentVO> joinChain(@PathVariable Long chainId, @Valid @RequestBody ChainSegmentCreateDTO dto) {
         return Result.success(chainService.addSegment(chainId, getCurrentUserId(), dto));
     }
 
@@ -57,12 +58,12 @@ public class ChainController extends BaseController {
     }
 
     @PostMapping
-    public Result<ChainVO> createChain(@RequestBody ChainCreateDTO dto) {
+    public Result<ChainVO> createChain(@Valid @RequestBody ChainCreateDTO dto) {
         return Result.success(chainService.createChain(getCurrentUserId(), dto));
     }
 
     @PostMapping("/{chainId}/segments")
-    public Result<ChainSegmentVO> addSegment(@PathVariable Long chainId, @RequestBody ChainSegmentCreateDTO dto) {
+    public Result<ChainSegmentVO> addSegment(@PathVariable Long chainId, @Valid @RequestBody ChainSegmentCreateDTO dto) {
         return Result.success(chainService.addSegment(chainId, getCurrentUserId(), dto));
     }
 
@@ -74,14 +75,14 @@ public class ChainController extends BaseController {
     }
 
     @PostMapping("/segments/{segmentId}/comments")
-    public Result<SegmentCommentVO> addComment(@PathVariable Long segmentId, @RequestBody SegmentCommentCreateDTO dto) {
+    public Result<SegmentCommentVO> addComment(@PathVariable Long segmentId, @Valid @RequestBody SegmentCommentCreateDTO dto) {
         return Result.success(chainService.addComment(segmentId, getCurrentUserId(), dto));
     }
 
     // ===== Segment review =====
 
     @PutMapping("/segments/{segmentId}/review")
-    public Result<String> reviewSegment(@PathVariable Long segmentId, @RequestBody SegmentReviewDTO dto) {
+    public Result<String> reviewSegment(@PathVariable Long segmentId, @Valid @RequestBody SegmentReviewDTO dto) {
         chainService.reviewSegment(segmentId, getCurrentUserId(), dto.getStatus());
         return Result.success("ok");
     }

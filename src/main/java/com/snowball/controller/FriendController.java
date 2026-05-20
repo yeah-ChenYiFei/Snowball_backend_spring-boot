@@ -1,6 +1,7 @@
 package com.snowball.controller;
 
 import com.snowball.common.Result;
+import jakarta.validation.Valid;
 import com.snowball.dto.FriendRequestDTO;
 import com.snowball.service.FriendService;
 import com.snowball.vo.FriendVO;
@@ -35,7 +36,7 @@ public class FriendController extends BaseController {
     }
 
     @PostMapping("/request")
-    public Result<String> sendRequest(@RequestBody FriendRequestDTO dto) {
+    public Result<String> sendRequest(@Valid @RequestBody FriendRequestDTO dto) {
         friendService.sendRequest(getCurrentUserId(), dto);
         return Result.success("好友请求已发送");
     }

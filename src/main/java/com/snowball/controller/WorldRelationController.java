@@ -1,5 +1,6 @@
 package com.snowball.controller;
 
+import com.snowball.common.BusinessException;
 import com.snowball.common.Result;
 import com.snowball.dto.WorldRelationCreateDTO;
 import com.snowball.service.WorldRelationService;
@@ -35,7 +36,7 @@ public class WorldRelationController extends BaseController {
             @Valid @RequestBody WorldRelationCreateDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return Result.success(relationService.createRelation(worldId, userId, dto));
     }
@@ -54,7 +55,7 @@ public class WorldRelationController extends BaseController {
             @Valid @RequestBody WorldRelationCreateDTO dto) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return Result.success(relationService.updateRelation(relationId, userId, dto));
     }
@@ -63,7 +64,7 @@ public class WorldRelationController extends BaseController {
     public Result<Void> deleteRelation(@PathVariable Long worldId, @PathVariable Long relationId) {
         Long userId = getOptionalUserId();
         if (userId == null) {
-            return Result.error(401, "请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         relationService.deleteRelation(relationId, userId);
         return Result.success();

@@ -39,4 +39,11 @@ public class GlobalExceptionHandler {
         });
         return ResponseEntity.badRequest().body(Result.error(400, "参数校验失败", errors));
     }
+
+    // 兜底处理未预期的异常，避免泄露内部细节
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Result<Void>> handleUnexpectedException(Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Result.error(500, "服务器内部错误"));
+    }
 }

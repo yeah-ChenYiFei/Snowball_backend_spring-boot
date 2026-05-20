@@ -1,5 +1,6 @@
 package com.snowball.service.impl;
 
+import com.snowball.common.BusinessException;
 import com.snowball.entity.PrivateMessage;
 import com.snowball.entity.User;
 import com.snowball.repository.PrivateMessageRepository;
@@ -51,7 +52,7 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
     @Transactional
     public PrivateMessageVO sendMessage(Long senderId, Long receiverId, String body, String imageUrl) {
         if (senderId.equals(receiverId)) {
-            throw new RuntimeException("不能给自己发消息");
+            throw new BusinessException(400, "不能给自己发消息");
         }
 
         PrivateMessage msg = new PrivateMessage();

@@ -28,6 +28,9 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
+    @Column(length = 200)
+    private String signature;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

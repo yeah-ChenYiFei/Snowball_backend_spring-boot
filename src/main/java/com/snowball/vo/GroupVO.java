@@ -11,6 +11,9 @@ public class GroupVO {
     private Long creatorId;
     private String creatorName;
     private Boolean isPrivate;
+    private Boolean isSearchable;
+    private String avatarUrl;
+    private Long groupNumber;
     private Long memberCount;
     private LocalDateTime createdAt;
 }

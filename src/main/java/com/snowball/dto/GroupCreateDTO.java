@@ -11,4 +11,5 @@ public class GroupCreateDTO {
     private String name;
     @Size(max = 500, message = "描述最长500字")
     private String description;
+    private String avatarUrl;
 }

@@ -16,4 +16,5 @@ public interface GroupService {
     void leaveGroup(Long groupId, Long userId);
     void kickMember(Long groupId, Long adminId, Long targetUserId);
     void deleteGroup(Long groupId, Long userId);
+    void updateGroup(Long groupId, Long userId, String name, String description, String avatarUrl, Boolean isSearchable);
 }

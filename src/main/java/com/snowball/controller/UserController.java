@@ -39,4 +39,11 @@ public class UserController extends BaseController {
         String avatarUrl = userService.uploadAvatar(userId, file);
         return Result.success(Map.of("avatarUrl", avatarUrl));
     }
+
+    @PutMapping("/profile")
+    public Result<Void> updateProfile(@RequestBody Map<String, String> body) {
+        Long userId = getCurrentUserId();
+        userService.updateProfile(userId, body.get("signature"));
+        return Result.success();
+    }
 }

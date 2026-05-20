@@ -5,6 +5,7 @@ import com.snowball.dto.UserRegisterDTO;
 import com.snowball.entity.User;
 import com.snowball.repository.UserRepository;
 import com.snowball.security.JwtUtil;
+import com.snowball.repository.*;
 import com.snowball.service.UserService;
 import com.snowball.service.FileStorageService;
 import com.snowball.service.PostService;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 @Service
 public class UserServiceImpl implements UserService {
@@ -26,13 +28,26 @@ public class UserServiceImpl implements UserService {
     private final PostService postService;
     private final BookService bookService;
     private final FileStorageService fileStorageService;
+    private final WorldRepository worldRepository;
+    private final WorldCollaboratorRepository worldCollaboratorRepository;
+    private final ArticleRepository articleRepository;
+    private final InspirationRepository inspirationRepository;
+    private final PostRepository postRepository;
 
-    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil, PostService postService, BookService bookService, FileStorageService fileStorageService) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil, PostService postService, BookService bookService,
+                           FileStorageService fileStorageService, WorldRepository worldRepository,
+                           WorldCollaboratorRepository worldCollaboratorRepository, ArticleRepository articleRepository,
+                           InspirationRepository inspirationRepository, PostRepository postRepository) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.postService = postService;
         this.bookService = bookService;
         this.fileStorageService = fileStorageService;
+        this.worldRepository = worldRepository;
+        this.worldCollaboratorRepository = worldCollaboratorRepository;
+        this.articleRepository = articleRepository;
+        this.inspirationRepository = inspirationRepository;
+        this.postRepository = postRepository;
     }
 
     @Override
@@ -79,18 +94,31 @@ public class UserServiceImpl implements UserService {
 
         UserProfileVO profileVO = new UserProfileVO();
 
-        // 1. 组装基础用户信息
         UserVO userVO = new UserVO();
         userVO.setId(user.getId());
         userVO.setUsername(user.getUsername());
+        userVO.setRole(user.getRole().name());
         userVO.setAvatarUrl(user.getAvatarUrl());
+        userVO.setSignature(user.getSignature());
+        userVO.setCreatedAt(user.getCreatedAt());
         profileVO.setUser(userVO);
 
-        // 2. 只查该用户自己的帖子
         profileVO.setPosts(postService.getUserPosts(userId));
-
-        // 3. ✅ 炸弹拆除：调 BookService 拿 VO 列表！
         profileVO.setBooks(bookService.getMyBooks(userId));
+
+        // Compute real stats
+        long worldCount = worldRepository.findByUserIdOrderByCreatedAtDesc(userId).size()
+                + worldCollaboratorRepository.findByUserId(userId).size();
+        long articleCount = articleRepository.findByUserIdAndStatusNotOrderByCreatedAtDesc(userId, "DELETED").size();
+        long inspirationCount = inspirationRepository.findByUserIdOrderByCreatedAtDesc(userId).size();
+        long postCount = postRepository.findByUserIdAndStatusNotInOrderByCreatedAtDesc(userId, List.of("HIDDEN", "DELETED")).size();
+
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("worlds", worldCount);
+        stats.put("articles", articleCount);
+        stats.put("inspirations", inspirationCount);
+        stats.put("posts", postCount);
+        profileVO.setStats(stats);
 
         return profileVO;
     }
@@ -103,5 +131,13 @@ public class UserServiceImpl implements UserService {
         user.setAvatarUrl(avatarUrl);
         userRepository.save(user);
         return avatarUrl;
+    }
+
+    @Override
+    public void updateProfile(Long userId, String signature) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
+        user.setSignature(signature);
+        userRepository.save(user);
     }
 }

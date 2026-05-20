@@ -12,4 +12,5 @@ public interface UserService {
     UserVO getCurrentUser(Long userId);
     UserProfileVO getUserProfile(Long userId);
     String uploadAvatar(Long userId, MultipartFile file);
+    void updateProfile(Long userId, String signature);
 }

@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class GroupMemberVO {
     private Long userId;
-    private String username; // 聚合数据
+    private String username;
+    private String avatarUrl;
     private String role;
 }

@@ -10,6 +10,7 @@ public class GroupMessageVO {
     private String senderName;
     private String body;
     private String imageUrl;
+    private String senderAvatarUrl;
     private String type;
     private Long refId;
     private String refType;

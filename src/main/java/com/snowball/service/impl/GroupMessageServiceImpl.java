@@ -59,9 +59,9 @@ public class GroupMessageServiceImpl implements GroupMessageService {
         msg.setRefType(dto.getRefType() != null ? GroupMessage.RefType.valueOf(dto.getRefType()) : null);
         msg = messageRepository.save(msg);
 
-        Map<Long, String> usernameMap = userRepository.findAllById(List.of(userId)).stream()
-                .collect(Collectors.toMap(User::getId, User::getUsername));
-        return toVO(msg, usernameMap);
+        Map<Long, User> userMap = userRepository.findAllById(List.of(userId)).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        return toVO(msg, userMap);
     }
 
     @Override
@@ -82,28 +82,30 @@ public class GroupMessageServiceImpl implements GroupMessageService {
         if (messages.isEmpty()) return List.of();
 
         List<Long> senderIds = messages.stream().map(GroupMessage::getSenderId).distinct().toList();
-        Map<Long, String> usernameMap = userRepository.findAllById(senderIds).stream()
-                .collect(Collectors.toMap(User::getId, User::getUsername));
+        Map<Long, User> userMap = userRepository.findAllById(senderIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
 
         List<GroupMessageVO> list = new ArrayList<>();
         for (GroupMessage m : messages) {
-            list.add(toVO(m, usernameMap));
+            list.add(toVO(m, userMap));
         }
         return list;
     }
 
-    private GroupMessageVO toVO(GroupMessage m, Map<Long, String> usernameMap) {
+    private GroupMessageVO toVO(GroupMessage m, Map<Long, User> userMap) {
+        User sender = userMap.get(m.getSenderId());
         GroupMessageVO vo = new GroupMessageVO();
         vo.setId(m.getId());
         vo.setGroupId(m.getGroupId());
         vo.setSenderId(m.getSenderId());
         vo.setBody(m.getBody());
         vo.setImageUrl(m.getImageUrl());
+        vo.setSenderAvatarUrl(sender != null ? sender.getAvatarUrl() : null);
         vo.setType(m.getType().name());
         vo.setRefId(m.getRefId());
         vo.setRefType(m.getRefType() != null ? m.getRefType().name() : null);
         vo.setCreatedAt(m.getCreatedAt());
-        vo.setSenderName(usernameMap.getOrDefault(m.getSenderId(), ""));
+        vo.setSenderName(sender != null ? sender.getUsername() : "");
         return vo;
     }
 }

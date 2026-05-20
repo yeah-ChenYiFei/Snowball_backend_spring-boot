@@ -109,6 +109,7 @@ public class PostServiceImpl implements PostService {
         version.setPostId(post.getId());
         version.setVersionNumber(1);
         version.setBodySnapshot(dto.getBody());
+        version.setImagesSnapshot(post.getImages());
         version.setChangeSummary("初始创建");
         postVersionRepository.save(version);
 
@@ -139,10 +140,14 @@ public class PostServiceImpl implements PostService {
             versionRecord.setPostId(post.getId());
             versionRecord.setVersionNumber(post.getVersion().intValue() + 1);
             versionRecord.setBodySnapshot(post.getCurrentBody());
+            versionRecord.setImagesSnapshot(post.getImages());
             versionRecord.setChangeSummary("回滚至版本 V" + targetVersion.getVersionNumber());
             postVersionRepository.save(versionRecord);
 
             post.setCurrentBody(targetVersion.getBodySnapshot());
+            if (targetVersion.getImagesSnapshot() != null) {
+                post.setImages(targetVersion.getImagesSnapshot());
+            }
             postRepository.save(post);
 
             PostDetailVO vo = convertToVO(post);
@@ -248,6 +253,7 @@ public class PostServiceImpl implements PostService {
             version.setPostId(post.getId());
             version.setVersionNumber(nextVersion);
             version.setBodySnapshot(post.getCurrentBody());
+            version.setImagesSnapshot(post.getImages());
             version.setChangeSummary(dto.getChangeSummary());
             postVersionRepository.save(version);
 

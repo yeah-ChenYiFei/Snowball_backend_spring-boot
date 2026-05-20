@@ -22,6 +22,9 @@ public class PostVersion {
     @Column(name = "body_snapshot", columnDefinition = "LONGTEXT", nullable = false)
     private String bodySnapshot;
 
+    @Column(name = "images_snapshot", columnDefinition = "TEXT")
+    private String imagesSnapshot;
+
     @Column(name = "change_summary", length = 500)
     private String changeSummary;
 

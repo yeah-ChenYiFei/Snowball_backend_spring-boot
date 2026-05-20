@@ -7,5 +7,6 @@ public class UserVO {
     private String username;
     private String role;
     private String avatarUrl;
+    private String signature;
     private LocalDateTime createdAt;
 }

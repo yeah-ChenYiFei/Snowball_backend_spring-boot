@@ -9,6 +9,7 @@ import com.snowball.vo.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/groups")
@@ -49,6 +50,16 @@ public class GroupController extends BaseController {
     @PostMapping
     public Result<GroupVO> createGroup(@Valid @RequestBody GroupCreateDTO dto) {
         return Result.success(groupService.createGroup(getCurrentUserId(), dto));
+    }
+
+    @PutMapping("/{groupId}")
+    public Result<Void> updateGroup(@PathVariable Long groupId, @RequestBody Map<String, Object> body) {
+        String name = body.containsKey("name") ? (String) body.get("name") : null;
+        String description = body.containsKey("description") ? (String) body.get("description") : null;
+        String avatarUrl = body.containsKey("avatarUrl") ? (String) body.get("avatarUrl") : null;
+        Boolean isSearchable = body.containsKey("isSearchable") ? (Boolean) body.get("isSearchable") : null;
+        groupService.updateGroup(groupId, getCurrentUserId(), name, description, avatarUrl, isSearchable);
+        return Result.success();
     }
 
     @PostMapping("/{groupId}/join")

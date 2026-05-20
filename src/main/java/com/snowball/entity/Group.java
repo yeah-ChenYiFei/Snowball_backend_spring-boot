@@ -16,6 +16,12 @@ public class Group {
     private Long creatorId;
     @Column(name = "is_private")
     private Boolean isPrivate = true;
+    @Column(name = "is_searchable")
+    private Boolean isSearchable = false;
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+    @Column(name = "group_number", unique = true)
+    private Long groupNumber;
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     @PrePersist

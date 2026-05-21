@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public class UserVO {
     private Long id;
     private String username;
+    private String email;
     private String role;
     private String avatarUrl;
     private String signature;

@@ -21,9 +21,18 @@ public class User {
     @Column(length = 100, unique = true)
     private String email;
 
+    @Column(name = "email_verified", nullable = false)
+    private Boolean emailVerified = false;
+
     @Column(length = 20)
     @Enumerated(EnumType.STRING)
     private UserRole role = UserRole.USER;
+
+    @Column(length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    public enum UserStatus { ACTIVE, DELETED }
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;

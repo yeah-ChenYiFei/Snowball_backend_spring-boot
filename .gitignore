@@ -43,3 +43,4 @@ src/main/resources/application-prod.properties
 
 README_*
 problem/
+deploy.ps1

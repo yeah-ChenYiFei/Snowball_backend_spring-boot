@@ -28,7 +28,7 @@ public class AiServiceImpl implements AiService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${deepseek.api.key}")
+    @Value("${deepseek.api.key:}")
     private String apiKey;
 
     @Value("${deepseek.api.url:https://api.deepseek.com}")

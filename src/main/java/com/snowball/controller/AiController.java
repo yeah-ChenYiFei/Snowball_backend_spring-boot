@@ -7,6 +7,8 @@ import com.snowball.service.AiService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/ai")
 public class AiController extends BaseController {
@@ -18,9 +20,16 @@ public class AiController extends BaseController {
     }
 
     @PostMapping("/continue")
-    public Result<AiContinueResponse> continueNovel(@Valid @RequestBody AiContinueRequest request) {
+    public Result<AiContinueResponse> continueNovel(@RequestBody Map<String, Object> request) {
         Long userId = getCurrentUserId();
-        AiContinueResponse result = aiService.continueNovel(request.getArticleId(), userId);
-        return Result.success(result);
+        if (request.containsKey("novelId")) {
+            return Result.success(aiService.continueNovel(request, userId));
+        }
+        // Old format: {articleId}
+        Object articleIdObj = request.get("articleId");
+        if (articleIdObj instanceof Number) {
+            return Result.success(aiService.continueNovel(((Number) articleIdObj).longValue(), userId));
+        }
+        return Result.success(aiService.continueNovel(request, userId));
     }
 }

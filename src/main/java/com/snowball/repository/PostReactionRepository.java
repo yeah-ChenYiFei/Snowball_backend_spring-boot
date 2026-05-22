@@ -28,4 +28,7 @@ public interface PostReactionRepository extends JpaRepository<PostReaction, Long
     /** 删除评价（取消） */
     @Modifying
     void deleteByPostIdAndUserId(Long postId, Long userId);
+
+    @Modifying
+    void deleteByPostId(Long postId);
 }

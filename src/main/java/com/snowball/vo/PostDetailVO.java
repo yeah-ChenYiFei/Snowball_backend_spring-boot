@@ -26,4 +26,5 @@ public class PostDetailVO {
 
     private List<String> tags;
     private List<String> images;
+    private Boolean isFavorited;
 }

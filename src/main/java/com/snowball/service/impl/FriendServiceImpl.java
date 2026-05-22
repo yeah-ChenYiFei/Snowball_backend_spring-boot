@@ -124,6 +124,17 @@ public class FriendServiceImpl implements FriendService {
             if (f.getStatus() == Friendship.FriendshipStatus.PENDING) {
                 throw new BusinessException(400, "已存在待处理的好友请求");
             }
+            // REJECTED: reuse the record, reset direction if the other party now sends
+            if (f.getStatus() == Friendship.FriendshipStatus.REJECTED) {
+                f.setUserId(userId);
+                f.setFriendId(dto.getFriendId());
+                f.setStatus(Friendship.FriendshipStatus.PENDING);
+                f.setSource(dto.getSource() != null ? dto.getSource() : "PROFILE");
+                f.setSourceId(dto.getSourceId());
+                friendshipRepository.save(f);
+                notifyRequest(dto.getFriendId(), userId, f);
+                return;
+            }
         }
 
         Friendship f = new Friendship();
@@ -133,10 +144,13 @@ public class FriendServiceImpl implements FriendService {
         f.setSource(dto.getSource() != null ? dto.getSource() : "PROFILE");
         f.setSourceId(dto.getSourceId());
         friendshipRepository.save(f);
+        notifyRequest(dto.getFriendId(), userId, f);
+    }
 
+    private void notifyRequest(Long friendId, Long userId, Friendship f) {
         String actorName = userRepository.findById(userId).map(User::getUsername).orElse("");
         String sourceHint = getSourceHint(f.getSource());
-        notificationService.create(dto.getFriendId(), "FRIEND_REQUEST", f.getId(), "FRIENDSHIP",
+        notificationService.create(friendId, "FRIEND_REQUEST", f.getId(), "FRIENDSHIP",
                 userId, actorName + "请求加您为好友" + sourceHint);
     }
 

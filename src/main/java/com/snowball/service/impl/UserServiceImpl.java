@@ -17,6 +17,7 @@ import com.snowball.vo.UserProfileVO;
 import com.snowball.vo.UserVO;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.SecureRandom;
@@ -42,6 +43,9 @@ public class UserServiceImpl implements UserService {
     private final PostRepository postRepository;
     private final EmailService emailService;
     private final VerificationCodeRepository verificationCodeRepository;
+
+    @Value("${snowball.root-admin-id:1}")
+    private Long rootAdminId;
 
     public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil, PostService postService, BookService bookService,
                            FileStorageService fileStorageService, WorldRepository worldRepository,
@@ -257,6 +261,8 @@ public class UserServiceImpl implements UserService {
         vo.setUsername(user.getUsername());
         vo.setEmail(user.getEmail());
         vo.setRole(user.getRole().name());
+        vo.setStatus(user.getStatus().name());
+        vo.setRoot(user.getId().equals(rootAdminId));
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setCreatedAt(user.getCreatedAt());
         return vo;

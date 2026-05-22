@@ -19,5 +19,5 @@ public interface ArticleService {
     ArticleVO unpublishArticle(Long id, Long userId);
     ArticleVO bindWorld(Long articleId, Long worldId, Long userId);
     ArticleVO unbindWorld(Long articleId, Long userId);
-    List<ArticleVO> getWorldBoundArticles(Long worldId);
+    List<ArticleVO> getWorldBoundArticles(Long worldId, Long userId);
 }

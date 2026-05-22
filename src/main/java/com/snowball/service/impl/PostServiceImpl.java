@@ -4,12 +4,14 @@ import com.snowball.common.BusinessException;
 import com.snowball.dto.PostCreateDTO;
 import com.snowball.dto.PostUpdateDTO;
 import com.snowball.entity.Post;
+import com.snowball.entity.PostFavorite;
 import com.snowball.entity.PostReaction;
 import com.snowball.entity.PostTag;
 import com.snowball.entity.PostVersion;
 import com.snowball.entity.Tag;
 import com.snowball.entity.User;
 import com.snowball.repository.CommentRepository;
+import com.snowball.repository.PostFavoriteRepository;
 import com.snowball.repository.PostRepository;
 import com.snowball.repository.PostReactionRepository;
 import com.snowball.repository.PostTagRepository;
@@ -42,11 +44,13 @@ public class PostServiceImpl implements PostService {
     private final NotificationService notificationService;
     private final PostTagRepository postTagRepository;
     private final TagRepository tagRepository;
+    private final PostFavoriteRepository postFavoriteRepository;
 
     public PostServiceImpl(PostRepository postRepository, PostVersionRepository postVersionRepository,
                            UserRepository userRepository, CommentRepository commentRepository,
                            PostReactionRepository postReactionRepository, NotificationService notificationService,
-                           PostTagRepository postTagRepository, TagRepository tagRepository) {
+                           PostTagRepository postTagRepository, TagRepository tagRepository,
+                           PostFavoriteRepository postFavoriteRepository) {
         this.postRepository = postRepository;
         this.postVersionRepository = postVersionRepository;
         this.userRepository = userRepository;
@@ -55,6 +59,7 @@ public class PostServiceImpl implements PostService {
         this.notificationService = notificationService;
         this.postTagRepository = postTagRepository;
         this.tagRepository = tagRepository;
+        this.postFavoriteRepository = postFavoriteRepository;
     }
 
     private void syncTags(Long postId, List<String> tagNames) {
@@ -159,7 +164,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<PostDetailVO> getAllPosts(Long userId) {
+    public List<PostDetailVO> getAllPosts(Long userId, String sort) {
         List<Post> posts = postRepository.findByStatusNotIn(Arrays.asList("HIDDEN", "DELETED"));
         if (posts.isEmpty()) return List.of();
 
@@ -187,16 +192,31 @@ public class PostServiceImpl implements PostService {
                         .collect(Collectors.toMap(PostReaction::getPostId, PostReaction::getReactionType, (a, b) -> a))
                 : Map.of();
 
+        // Batch load favorites
+        Map<Long, Boolean> favoriteMap = (userId != null)
+                ? postFavoriteRepository.findByUserIdAndPostIdIn(userId, postIds).stream()
+                        .collect(Collectors.toMap(f -> f.getPostId(), f -> true, (a, b) -> a))
+                : Map.of();
+
         List<PostDetailVO> voList = posts.stream().map(post -> {
             PostDetailVO vo = convertToVO(post, usernameMap, tagsMap);
             vo.setLikeCount(likeCountMap.getOrDefault(post.getId(), 0L));
             vo.setDislikeCount(dislikeCountMap.getOrDefault(post.getId(), 0L));
             vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
             vo.setCurrentUserReaction(reactionMap.get(post.getId()) != null ? reactionMap.get(post.getId()).name() : null);
+            vo.setIsFavorited(favoriteMap.getOrDefault(post.getId(), false));
             return vo;
         }).collect(Collectors.toList());
 
-        voList.sort((a, b) -> Double.compare(calcHotScore(b), calcHotScore(a)));
+        // Sort
+        if ("new".equals(sort)) {
+            voList.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        } else if ("top".equals(sort)) {
+            voList.sort((a, b) -> Long.compare(b.getLikeCount() != null ? b.getLikeCount() : 0, a.getLikeCount() != null ? a.getLikeCount() : 0));
+        } else {
+            // default: hot
+            voList.sort((a, b) -> Double.compare(calcHotScore(b), calcHotScore(a)));
+        }
         return voList;
     }
 
@@ -226,13 +246,25 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public PostDetailVO getPostById(Long id) {
+    public PostDetailVO getPostById(Long id, Long userId) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
+
+        List<String> hidden = Arrays.asList("HIDDEN", "DELETED");
+        if (hidden.contains(post.getStatus())) {
+            boolean isOwner = userId != null && post.getUserId().equals(userId);
+            if (!isOwner) {
+                throw new BusinessException(404, "帖子不存在");
+            }
+        }
+
         post.setViewCount((post.getViewCount() != null ? post.getViewCount() : 0) + 1);
         postRepository.save(post);
         PostDetailVO vo = convertToVO(post);
         vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
+        if (userId != null) {
+            vo.setIsFavorited(postFavoriteRepository.existsByUserIdAndPostId(userId, id));
+        }
         return vo;
     }
 
@@ -368,7 +400,12 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    @Transactional
     public void forceDeletePost(Long id) {
+        commentRepository.deleteByPostId(id);
+        postReactionRepository.deleteByPostId(id);
+        postTagRepository.deleteByPostId(id);
+        postVersionRepository.deleteByPostId(id);
         postRepository.deleteById(id);
     }
 
@@ -435,6 +472,44 @@ public class PostServiceImpl implements PostService {
         return posts.stream().map(post -> {
             PostDetailVO vo = convertToVO(post, Map.of(), tagsMap);
             vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
+            return vo;
+        }).toList();
+    }
+
+    @Override
+    @Transactional
+    public boolean toggleFavorite(Long postId, Long userId) {
+        Optional<PostFavorite> existing = postFavoriteRepository.findByUserIdAndPostId(userId, postId);
+        if (existing.isPresent()) {
+            postFavoriteRepository.delete(existing.get());
+            return false;
+        }
+        PostFavorite f = new PostFavorite();
+        f.setUserId(userId);
+        f.setPostId(postId);
+        postFavoriteRepository.save(f);
+        return true;
+    }
+
+    @Override
+    public List<PostDetailVO> getFavoritePosts(Long userId) {
+        List<PostFavorite> favs = postFavoriteRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (favs.isEmpty()) return List.of();
+
+        List<Long> postIds = favs.stream().map(PostFavorite::getPostId).toList();
+        List<Post> posts = postRepository.findAllById(postIds);
+
+        List<Long> creatorIds = posts.stream().map(Post::getUserId).distinct().toList();
+        Map<Long, String> usernameMap = userRepository.findAllById(creatorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        Map<Long, List<String>> tagsMap = batchLoadTags(postIds);
+        Map<Long, Integer> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+
+        return posts.stream().map(post -> {
+            PostDetailVO vo = convertToVO(post, usernameMap, tagsMap);
+            vo.setCommentCount(commentCountMap.getOrDefault(post.getId(), 0));
+            vo.setIsFavorited(true);
             return vo;
         }).toList();
     }

@@ -13,11 +13,11 @@ public interface PostService {
     // 创建
     PostDetailVO createPost(Long userId, PostCreateDTO dto);
     // 获取全站列表
-    List<PostDetailVO> getAllPosts(Long userId);
+    List<PostDetailVO> getAllPosts(Long userId, String sort);
     // 获取某用户的帖子
     List<PostDetailVO> getUserPosts(Long userId);
-    // 获取详情
-    PostDetailVO getPostById(Long id);
+    // 获取详情（userId 可空，游客传 null）
+    PostDetailVO getPostById(Long id, Long userId);
     // 编辑（含版本控制核心算法）
     PostDetailVO updatePost(Long id, Long userId, PostUpdateDTO dto);
     // 逻辑删除
@@ -34,4 +34,8 @@ public interface PostService {
     void react(Long postId, Long userId, String reactionTypeStr);
 
     List<PostDetailVO> searchPosts(String q, String type, String tag);
+
+    // Favorites
+    boolean toggleFavorite(Long postId, Long userId);
+    List<PostDetailVO> getFavoritePosts(Long userId);
 }

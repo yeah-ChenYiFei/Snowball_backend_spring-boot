@@ -7,6 +7,8 @@ public class UserVO {
     private String username;
     private String email;
     private String role;
+    private String status;
+    private Boolean root;
     private String avatarUrl;
     private String signature;
     private LocalDateTime createdAt;

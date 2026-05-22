@@ -81,6 +81,7 @@ public class ArticleController extends BaseController {
 
     @GetMapping("/by-world/{worldId}")
     public Result<List<ArticleVO>> getWorldBoundArticles(@PathVariable Long worldId) {
-        return Result.success(articleService.getWorldBoundArticles(worldId));
+        Long userId = getOptionalUserId();
+        return Result.success(articleService.getWorldBoundArticles(worldId, userId));
     }
 }

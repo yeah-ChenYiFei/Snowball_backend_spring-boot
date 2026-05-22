@@ -28,9 +28,9 @@ public class PostController extends BaseController{
     }
 
     @GetMapping
-    public Result<List<PostDetailVO>> getAllPosts() {
+    public Result<List<PostDetailVO>> getAllPosts(@RequestParam(defaultValue = "hot") String sort) {
         Long userId = getOptionalUserId();
-        return Result.success(postService.getAllPosts(userId));
+        return Result.success(postService.getAllPosts(userId, sort));
     }
 
     @GetMapping("/mine")
@@ -40,7 +40,8 @@ public class PostController extends BaseController{
 
     @GetMapping("/{id}")
     public Result<PostDetailVO> getPostById(@PathVariable Long id) {
-        return Result.success(postService.getPostById(id));
+        Long userId = getOptionalUserId();
+        return Result.success(postService.getPostById(id, userId));
     }
 
     @PostMapping
@@ -81,8 +82,17 @@ public class PostController extends BaseController{
      */
     @PostMapping("/{id}/react")
     public Result<Void> react(@PathVariable Long id, @RequestParam String reactionType) {
-        // ✅ 修复：去掉了 @AuthenticationPrincipal，统一用 getCurrentUserId()
         postService.react(id, getCurrentUserId(), reactionType);
         return Result.success();
+    }
+
+    @PostMapping("/{id}/favorite")
+    public Result<Boolean> toggleFavorite(@PathVariable Long id) {
+        return Result.success(postService.toggleFavorite(id, getCurrentUserId()));
+    }
+
+    @GetMapping("/favorites")
+    public Result<List<PostDetailVO>> getFavorites() {
+        return Result.success(postService.getFavoritePosts(getCurrentUserId()));
     }
 }

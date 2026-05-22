@@ -198,7 +198,12 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public List<ArticleVO> getWorldBoundArticles(Long worldId) {
+    public List<ArticleVO> getWorldBoundArticles(Long worldId, Long userId) {
+        World world = worldRepository.findById(worldId)
+                .orElseThrow(() -> new BusinessException(404, "世界不存在"));
+        if (Boolean.FALSE.equals(world.getIsPublic()) && !world.getUserId().equals(userId)) {
+            throw new BusinessException(403, "这个世界是私有的");
+        }
         return articleRepository.findByWorldId(worldId).stream()
                 .map(this::toVO).collect(Collectors.toList());
     }

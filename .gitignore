@@ -35,6 +35,9 @@ target/
 # macOS
 .DS_Store
 
+# Environment files
+.env
+
 # Application properties (sensitive credentials)
 # application.properties.example
 src/main/resources/application.properties
@@ -44,3 +47,5 @@ src/main/resources/application-prod.properties
 README_*
 problem/
 deploy.ps1
+CLAUDE.md
+server-env

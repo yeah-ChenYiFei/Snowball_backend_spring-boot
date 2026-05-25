@@ -97,6 +97,7 @@ public class ChainServiceImpl implements ChainService {
             segVO.setPrevSegmentId(seg.getPrevSegmentId());
             segVO.setDepth(seg.getDepth());
             segVO.setCommentCount(commentRepository.countBySegmentId(seg.getId()));
+            segVO.setIsAiGenerated(seg.getIsAiGenerated());
             segVO.setCreatedAt(seg.getCreatedAt());
             userRepository.findById(seg.getUserId()).ifPresent(user -> segVO.setUsername(user.getUsername()));
             segmentVOList.add(segVO);
@@ -139,6 +140,7 @@ public class ChainServiceImpl implements ChainService {
         seg.setBody(dto.getBody());
         seg.setPrevSegmentId(dto.getPrevSegmentId());
         seg.setDepth(dto.getPrevSegmentId() != null ? 2 : 1);
+        seg.setIsAiGenerated(dto.getIsAi() != null && dto.getIsAi());
         // Joiner segments go to PENDING for initiator review
         boolean isInitiator = chain.getCreatorId().equals(userId);
         seg.setStatus(isInitiator ? ChainSegment.SegmentStatus.APPROVED : ChainSegment.SegmentStatus.PENDING);
@@ -152,6 +154,7 @@ public class ChainServiceImpl implements ChainService {
         vo.setPrevSegmentId(seg.getPrevSegmentId());
         vo.setDepth(seg.getDepth());
         vo.setCommentCount(0);
+        vo.setIsAiGenerated(seg.getIsAiGenerated());
         vo.setCreatedAt(seg.getCreatedAt());
         userRepository.findById(userId).ifPresent(user -> vo.setUsername(user.getUsername()));
         return vo;
@@ -202,6 +205,22 @@ public class ChainServiceImpl implements ChainService {
 
         seg.setStatus(ChainSegment.SegmentStatus.valueOf(status));
         segmentRepository.save(seg);
+    }
+
+    @Override
+    public void deleteSegment(Long segmentId, Long userId) {
+        ChainSegment seg = segmentRepository.findById(segmentId)
+                .orElseThrow(() -> new BusinessException(404, "段落不存在"));
+
+        StoryChain chain = chainRepository.findById(seg.getChainId())
+                .orElseThrow(() -> new BusinessException(404, "接龙不存在"));
+
+        // Author or chain initiator can delete
+        if (!seg.getUserId().equals(userId) && !chain.getCreatorId().equals(userId)) {
+            throw new BusinessException(403, "无权删除此段落");
+        }
+
+        segmentRepository.delete(seg);
     }
 
     @Override

@@ -11,4 +11,7 @@ public class ChainSegmentCreateDTO {
 
     @JsonProperty("prevSegmentId")
     private Long prevSegmentId;
+
+    @JsonProperty("isAi")
+    private Boolean isAi;
 }

@@ -79,6 +79,14 @@ public class ChainController extends BaseController {
         return Result.success(chainService.addComment(segmentId, getCurrentUserId(), dto));
     }
 
+    // ===== Segment deletion =====
+
+    @DeleteMapping("/segments/{segmentId}")
+    public Result<String> deleteSegment(@PathVariable Long segmentId) {
+        chainService.deleteSegment(segmentId, getCurrentUserId());
+        return Result.success("ok");
+    }
+
     // ===== Segment review =====
 
     @PutMapping("/segments/{segmentId}/review")

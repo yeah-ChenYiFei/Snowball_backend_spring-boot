@@ -11,5 +11,6 @@ public class ChainSegmentVO {
     private Long prevSegmentId;
     private Integer depth;
     private int commentCount;
+    private Boolean isAiGenerated;
     private LocalDateTime createdAt;
 }

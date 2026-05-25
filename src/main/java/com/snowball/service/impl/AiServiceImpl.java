@@ -24,6 +24,8 @@ public class AiServiceImpl implements AiService {
     private final NovelChapterRepository novelChapterRepository;
     private final WorldRepository worldRepository;
     private final WorldEntryRepository worldEntryRepository;
+    private final StoryChainRepository storyChainRepository;
+    private final ChainSegmentRepository chainSegmentRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -40,12 +42,16 @@ public class AiServiceImpl implements AiService {
                          NovelRepository novelRepository,
                          NovelChapterRepository novelChapterRepository,
                          WorldRepository worldRepository,
-                         WorldEntryRepository worldEntryRepository) {
+                         WorldEntryRepository worldEntryRepository,
+                         StoryChainRepository storyChainRepository,
+                         ChainSegmentRepository chainSegmentRepository) {
         this.articleRepository = articleRepository;
         this.novelRepository = novelRepository;
         this.novelChapterRepository = novelChapterRepository;
         this.worldRepository = worldRepository;
         this.worldEntryRepository = worldEntryRepository;
+        this.storyChainRepository = storyChainRepository;
+        this.chainSegmentRepository = chainSegmentRepository;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(30000);
         factory.setReadTimeout(120000);
@@ -130,40 +136,9 @@ public class AiServiceImpl implements AiService {
                 + "4. 续写长度约500-1000字\n"
                 + "5. 如果当前章节为空，则根据上下文写出开篇";
 
-        String userPrompt = contextBuilder.toString();
+        String userContent = contextBuilder.toString();
 
-        // Call DeepSeek API
-        try {
-            Map<String, Object> requestBody = new LinkedHashMap<>();
-            requestBody.put("model", model);
-            requestBody.put("messages", List.of(
-                    Map.of("role", "system", "content", systemPrompt),
-                    Map.of("role", "user", "content", userPrompt)
-            ));
-            requestBody.put("max_tokens", 2048);
-            requestBody.put("temperature", 0.8);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.exchange(
-                    apiUrl + "/v1/chat/completions",
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
-
-            JsonNode root = objectMapper.readTree(response.getBody());
-            String continuation = root.path("choices").get(0)
-                    .path("message").path("content").asText();
-            int tokensUsed = root.path("usage").path("total_tokens").asInt();
-
-            return new AiContinueResponse(continuation, model, tokensUsed);
-        } catch (Exception e) {
-            throw new BusinessException(500, "AI续写请求失败: " + e.getMessage());
-        }
+        return callDeepSeek(systemPrompt, userContent);
     }
 
     @Override
@@ -250,38 +225,122 @@ public class AiServiceImpl implements AiService {
                 + "4. 续写长度约500-1000字\n"
                 + "5. 如果当前章节为空，则根据上下文写出开篇";
 
-        String userPrompt = contextBuilder.toString();
+        String userContent = contextBuilder.toString();
+        // If user provided a prompt, append it
+        String prompt = request.get("prompt") instanceof String ? (String) request.get("prompt") : "";
+        if (!prompt.isBlank()) {
+            userContent += "\n\n【用户对续写的特别要求】" + prompt;
+        }
 
+        return callDeepSeek(systemPrompt, userContent);
+    }
+
+    @Override
+    public AiContinueResponse continueChain(Long chainId, String prompt, Long userId) {
+        StoryChain chain = storyChainRepository.findById(chainId)
+                .orElseThrow(() -> new BusinessException(404, "接龙不存在"));
+
+        List<ChainSegment> segments = chainSegmentRepository.findByChainIdOrderByCreatedAtAsc(chainId);
+
+        StringBuilder ctx = new StringBuilder();
+        ctx.append("【接龙标题】").append(chain.getTitle()).append("\n\n");
+        ctx.append("【已有的接龙内容】\n");
+        for (int i = 0; i < segments.size(); i++) {
+            ChainSegment seg = segments.get(i);
+            String body = seg.getBody();
+            if (body != null && body.length() > 1000) body = body.substring(body.length() - 1000);
+            ctx.append("第").append(i + 1).append("段：").append(body != null ? body : "").append("\n\n");
+        }
+
+        String userContent = ctx.toString();
+        if (prompt != null && !prompt.isBlank()) {
+            userContent += "\n【续写提示】" + prompt;
+        }
+
+        String system = "你是一位创意写作者，正在参与一个故事接龙。请根据已有内容进行合理续写。\n"
+                + "要求：1.自然衔接上文保持风格一致 2.输出纯正文不要包含引导语 3.续写约200-500字\n"
+                + "4.如有续写提示请按提示的方向、人物、文风进行创作";
+
+        return callDeepSeek(system, userContent);
+    }
+
+    @Override
+    public AiContinueResponse generateWorldStory(Long worldId, List<Long> entryIds, String prompt, Long userId) {
+        World world = worldRepository.findById(worldId)
+                .orElseThrow(() -> new BusinessException(404, "世界不存在"));
+
+        StringBuilder ctx = new StringBuilder();
+        ctx.append("【世界观】").append(world.getName()).append("\n");
+        if (world.getDescription() != null && !world.getDescription().isBlank()) {
+            ctx.append(world.getDescription()).append("\n");
+        }
+        ctx.append("\n");
+
+        List<WorldEntry> selected = new ArrayList<>();
+        if (entryIds != null && !entryIds.isEmpty()) {
+            ctx.append("【选中的设定条目】\n");
+            for (Long eid : entryIds) {
+                worldEntryRepository.findById(eid).ifPresent(e -> {
+                    ctx.append("- ").append(e.getName());
+                    if (e.getType() != null) ctx.append("（").append(e.getType()).append("）");
+                    ctx.append(": ");
+                    String c = e.getContent();
+                    if (c != null) { if (c.length() > 800) c = c.substring(0, 800) + "..."; ctx.append(c); }
+                    ctx.append("\n");
+                });
+            }
+        } else {
+            selected = worldEntryRepository.findByWorldIdOrderByCreatedAtDesc(worldId);
+            if (!selected.isEmpty()) {
+                ctx.append("【世界的设定条目】\n");
+                for (WorldEntry e : selected) {
+                    ctx.append("- ").append(e.getName());
+                    if (e.getType() != null) ctx.append("（").append(e.getType()).append("）");
+                    String c = e.getContent();
+                    if (c != null) { if (c.length() > 500) c = c.substring(0, 500) + "..."; ctx.append(": ").append(c); }
+                    ctx.append("\n");
+                }
+            }
+        }
+
+        ctx.append("\n");
+        if (prompt != null && !prompt.isBlank()) {
+            ctx.append("【故事要求】").append(prompt);
+        } else {
+            ctx.append("【故事要求】请根据以上世界观设定创作一个有趣的故事片段。");
+        }
+
+        String system = "你是一位富有创意的小说作者。根据世界观设定创作引人入胜的故事。\n"
+                + "要求：1.严格遵循设定 2.故事有趣有冲突有情感 3.输出纯正文不要引导语 4.约500-1500字";
+
+        return callDeepSeek(system, ctx.toString());
+    }
+
+    private AiContinueResponse callDeepSeek(String systemPrompt, String userPrompt) {
         try {
-            Map<String, Object> requestBody = new LinkedHashMap<>();
-            requestBody.put("model", model);
-            requestBody.put("messages", List.of(
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", model);
+            body.put("messages", List.of(
                     Map.of("role", "system", "content", systemPrompt),
                     Map.of("role", "user", "content", userPrompt)
             ));
-            requestBody.put("max_tokens", 2048);
-            requestBody.put("temperature", 0.8);
+            body.put("max_tokens", 2048);
+            body.put("temperature", 0.8);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(apiKey);
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.exchange(
-                    apiUrl + "/v1/chat/completions",
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> resp = restTemplate.exchange(
+                    apiUrl + "/v1/chat/completions", HttpMethod.POST, entity, String.class);
 
-            JsonNode root = objectMapper.readTree(response.getBody());
-            String continuation = root.path("choices").get(0)
-                    .path("message").path("content").asText();
-            int tokensUsed = root.path("usage").path("total_tokens").asInt();
-
-            return new AiContinueResponse(continuation, model, tokensUsed);
+            JsonNode root = objectMapper.readTree(resp.getBody());
+            String text = root.path("choices").get(0).path("message").path("content").asText();
+            int tokens = root.path("usage").path("total_tokens").asInt();
+            return new AiContinueResponse(text, model, tokens);
         } catch (Exception e) {
-            throw new BusinessException(500, "AI续写请求失败: " + e.getMessage());
+            throw new BusinessException(500, "AI请求失败: " + e.getMessage());
         }
     }
 }

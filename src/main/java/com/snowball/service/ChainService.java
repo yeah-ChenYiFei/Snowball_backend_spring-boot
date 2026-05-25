@@ -13,6 +13,7 @@ public interface ChainService {
     ChainDetailVO getChainDetail(Long chainId);
     ChainVO createChain(Long userId, ChainCreateDTO dto);
     ChainSegmentVO addSegment(Long chainId, Long userId, ChainSegmentCreateDTO dto);
+    void deleteSegment(Long segmentId, Long userId);
 
     List<SegmentCommentVO> getComments(Long segmentId);
     SegmentCommentVO addComment(Long segmentId, Long userId, SegmentCommentCreateDTO dto);

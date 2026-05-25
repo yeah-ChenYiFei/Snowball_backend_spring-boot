@@ -25,6 +25,8 @@ public class ChainSegment {
     private Long prevSegmentId;
     @Column(nullable = false)
     private Integer depth = 1;
+    @Column(name = "is_ai_generated")
+    private Boolean isAiGenerated = false;
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     @PrePersist

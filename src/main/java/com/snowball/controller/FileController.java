@@ -41,7 +41,8 @@ public class FileController {
     }
 
     @GetMapping("/**")
-    public void getFile(HttpServletResponse response) {
+    public void getFile(@RequestParam(value = "thumb", required = false) String thumb,
+                        HttpServletResponse response) {
         String path = (String) request.getAttribute(
                 org.springframework.web.servlet.HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
         String fullPath = path.substring("/api/v1/files/".length());
@@ -49,13 +50,25 @@ public class FileController {
                 ? fullPath.substring(bucket.length() + 1)
                 : fullPath;
 
+        // Thumbnail: serve _thumb.jpg variant
+        if ("1".equals(thumb)) {
+            objectName = objectName.replaceAll("\\.[^.]+$", "_thumb.jpg");
+        }
+
         try (InputStream is = client.getObject(GetObjectArgs.builder()
                 .bucket(bucket)
                 .object(objectName)
                 .build())) {
 
-            String contentType = java.nio.file.Files.probeContentType(
-                    java.nio.file.Path.of(objectName));
+            // ETag from MinIO stat
+            try {
+                var stat = client.statObject(
+                        io.minio.StatObjectArgs.builder().bucket(bucket).object(objectName).build());
+                response.setHeader("ETag", "\"" + stat.etag() + "\"");
+            } catch (Exception ignored) {
+            }
+
+            String contentType = deriveContentType(objectName);
             response.setContentType(contentType != null ? contentType : "application/octet-stream");
             response.setHeader("Cache-Control", "public, max-age=86400");
 
@@ -65,6 +78,17 @@ public class FileController {
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         }
+    }
+
+    private String deriveContentType(String name) {
+        String lower = name.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".bmp")) return "image/bmp";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        return "application/octet-stream";
     }
 
     private final jakarta.servlet.http.HttpServletRequest request;

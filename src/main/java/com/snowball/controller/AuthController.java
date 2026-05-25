@@ -24,14 +24,21 @@ public class AuthController extends BaseController {
     @RateLimit(maxAttempts = 3, timeWindowSeconds = 3600)
     @PostMapping("/register")
     public Result<Map<String, Long>> register(@Valid @RequestBody UserRegisterDTO dto) {
-        Long userId = userService.register(dto);
-        return Result.success(Map.of("userId", userId));
+        Long verificationId = userService.register(dto);
+        return Result.success(Map.of("verificationId", verificationId));
     }
 
     @RateLimit(maxAttempts = 5, timeWindowSeconds = 600)
     @PostMapping("/verify-email")
-    public Result<Void> verifyEmail(@RequestParam Long userId, @Valid @RequestBody VerifyEmailDTO dto) {
-        userService.verifyEmail(userId, dto.getCode());
+    public Result<Void> verifyEmail(@RequestParam Long verificationId, @Valid @RequestBody VerifyEmailDTO dto) {
+        userService.verifyEmail(verificationId, dto.getCode());
+        return Result.success();
+    }
+
+    @RateLimit(maxAttempts = 3, timeWindowSeconds = 600)
+    @PostMapping("/resend-verification")
+    public Result<Void> resendVerification(@RequestParam String email) {
+        userService.resendVerificationCode(email);
         return Result.success();
     }
 

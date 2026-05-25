@@ -15,7 +15,7 @@ public class VerificationCode {
     @Column(nullable = false, length = 6)
     private String code;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Long userId;
 
     @Column(nullable = false, length = 20)
@@ -29,6 +29,12 @@ public class VerificationCode {
 
     @Column(length = 100)
     private String email;
+
+    @Column(length = 50)
+    private String username;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

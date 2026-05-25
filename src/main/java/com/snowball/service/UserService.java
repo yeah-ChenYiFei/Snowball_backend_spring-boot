@@ -8,7 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
     Long register(UserRegisterDTO dto);
-    void verifyEmail(Long userId, String code);
+    void verifyEmail(Long verificationId, String code);
+    void resendVerificationCode(String email);
     UserLoginVO login(UserLoginDTO dto);
     UserVO getCurrentUser(Long userId);
     UserProfileVO getUserProfile(Long userId);

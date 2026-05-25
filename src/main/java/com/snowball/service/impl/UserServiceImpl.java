@@ -75,35 +75,34 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(400, "邮箱已被注册");
         }
 
-        User user = new User();
-        user.setUsername(dto.getUsername());
-        user.setEmail(dto.getEmail());
-        user.setEmailVerified(false);
-        user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
-        userRepository.save(user);
-
         String code = generateVerificationCode();
         VerificationCode vc = new VerificationCode();
         vc.setCode(code);
-        vc.setUserId(user.getId());
         vc.setType("REGISTER");
+        vc.setEmail(dto.getEmail());
+        vc.setUsername(dto.getUsername());
+        vc.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
         vc.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        vc.setUsed(false);
+
+        emailService.sendVerificationCode(dto.getEmail(), code);
         verificationCodeRepository.save(vc);
 
-        try {
-            emailService.sendVerificationCode(dto.getEmail(), code);
-        } catch (Exception e) {
-            log.warn("邮件发送失败（SMTP未配置），验证码: {}", code);
-        }
-
-        return user.getId();
+        return vc.getId();
     }
 
     @Override
-    public void verifyEmail(Long userId, String code) {
-        VerificationCode vc = verificationCodeRepository
-                .findByUserIdAndCodeAndTypeAndUsedFalse(userId, code, "REGISTER")
+    public void verifyEmail(Long verificationId, String code) {
+        VerificationCode vc = verificationCodeRepository.findById(verificationId)
                 .orElseThrow(() -> new BusinessException(400, "验证码错误或已使用"));
+
+        if (!"REGISTER".equals(vc.getType()) || !code.equals(vc.getCode())) {
+            throw new BusinessException(400, "验证码错误或已使用");
+        }
+
+        if (Boolean.TRUE.equals(vc.getUsed())) {
+            throw new BusinessException(400, "验证码已使用");
+        }
 
         if (LocalDateTime.now().isAfter(vc.getExpiresAt())) {
             throw new BusinessException(400, "验证码已过期，请重新获取");
@@ -112,10 +111,35 @@ public class UserServiceImpl implements UserService {
         vc.setUsed(true);
         verificationCodeRepository.save(vc);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
+        User user = new User();
+        user.setUsername(vc.getUsername());
+        user.setEmail(vc.getEmail());
+        user.setPasswordHash(vc.getPasswordHash());
         user.setEmailVerified(true);
         userRepository.save(user);
+    }
+
+    @Override
+    public void resendVerificationCode(String email) {
+        VerificationCode vc = verificationCodeRepository
+                .findTopByEmailAndTypeAndUsedFalseOrderByCreatedAtDesc(email, "REGISTER")
+                .orElseThrow(() -> new BusinessException(400, "未找到待验证的注册记录，请重新注册"));
+
+        if (LocalDateTime.now().isAfter(vc.getExpiresAt())) {
+            throw new BusinessException(400, "验证码已过期，请重新注册");
+        }
+
+        String code = generateVerificationCode();
+        vc.setCode(code);
+        vc.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        verificationCodeRepository.save(vc);
+
+        try {
+            emailService.sendVerificationCode(email, code);
+        } catch (Exception e) {
+            log.warn("重发邮件失败，验证码: {}", code);
+            throw new BusinessException(500, "邮件发送失败，请稍后重试");
+        }
     }
 
     @Override

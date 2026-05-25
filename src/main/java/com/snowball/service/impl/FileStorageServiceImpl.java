@@ -11,10 +11,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.*;
+import javax.imageio.ImageIO;
 
 @Service
 public class FileStorageServiceImpl implements FileStorageService {
@@ -81,7 +86,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             ensureBucket();
 
-            // 已存在则跳过上传
+            // 已存在则跳过上传（缩略图也已存在则跳过）
             boolean exists = objectExists(objectName);
             if (!exists) {
                 client.putObject(PutObjectArgs.builder()
@@ -90,6 +95,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                         .stream(new ByteArrayInputStream(fileBytes), fileBytes.length, -1)
                         .contentType(file.getContentType())
                         .build());
+                generateAndSaveThumbnail(fileBytes, ext, objectName);
             }
 
             return "/api/v1/files/" + bucket + "/" + objectName;
@@ -122,6 +128,44 @@ public class FileStorageServiceImpl implements FileStorageService {
                     .build());
         } catch (Exception e) {
             // silently ignore
+        }
+    }
+
+    private static final int THUMB_MAX_WIDTH = 400;
+
+    private void generateAndSaveThumbnail(byte[] originalBytes, String ext, String objectName) {
+        String lowerExt = ext.toLowerCase();
+        if (!Set.of(".jpg", ".jpeg", ".png", ".bmp", ".gif").contains(lowerExt)) {
+            return;
+        }
+        try {
+            BufferedImage original = ImageIO.read(new ByteArrayInputStream(originalBytes));
+            if (original == null) return;
+
+            int w = original.getWidth();
+            int h = original.getHeight();
+            if (w <= THUMB_MAX_WIDTH) return;
+
+            int newH = (int) (h * ((double) THUMB_MAX_WIDTH / w));
+            Image scaled = original.getScaledInstance(THUMB_MAX_WIDTH, newH, Image.SCALE_SMOOTH);
+            BufferedImage thumb = new BufferedImage(THUMB_MAX_WIDTH, newH, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = thumb.createGraphics();
+            g.drawImage(scaled, 0, 0, null);
+            g.dispose();
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ImageIO.write(thumb, "jpg", bos);
+            byte[] thumbBytes = bos.toByteArray();
+
+            String thumbName = objectName.replaceAll("\\.[^.]+$", "_thumb.jpg");
+            client.putObject(PutObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(thumbName)
+                    .stream(new ByteArrayInputStream(thumbBytes), thumbBytes.length, -1)
+                    .contentType("image/jpeg")
+                    .build());
+        } catch (Exception e) {
+            log.warn("缩略图生成失败: {}", e.getMessage());
         }
     }
 

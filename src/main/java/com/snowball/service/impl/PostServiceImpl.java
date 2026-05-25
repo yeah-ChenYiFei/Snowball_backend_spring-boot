@@ -262,8 +262,14 @@ public class PostServiceImpl implements PostService {
         postRepository.save(post);
         PostDetailVO vo = convertToVO(post);
         vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
+        // Populate like/dislike counts
+        vo.setLikeCount(postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.LIKE));
+        vo.setDislikeCount(postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.DISLIKE));
         if (userId != null) {
             vo.setIsFavorited(postFavoriteRepository.existsByUserIdAndPostId(userId, id));
+            // Populate current user's reaction
+            postReactionRepository.findByPostIdAndUserId(post.getId(), userId)
+                    .ifPresent(r -> vo.setCurrentUserReaction(r.getReactionType().name()));
         }
         return vo;
     }

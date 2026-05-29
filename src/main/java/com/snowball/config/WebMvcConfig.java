@@ -23,7 +23,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("http://localhost:*", "https://*.ochub.com.cn", "https://ochub.com.cn", "https://82.156.124.80")
+                .allowedOrigins(
+                        "http://localhost:5173",
+                        "http://localhost:4173",
+                        "https://www.ochub.com.cn",
+                        "https://ochub.com.cn"
+                )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)

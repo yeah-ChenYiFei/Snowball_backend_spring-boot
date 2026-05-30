@@ -68,15 +68,29 @@ public class PostServiceImpl implements PostService {
         for (String name : tagNames) {
             String trimmed = name.trim();
             if (trimmed.isEmpty()) continue;
-            Tag tag = tagRepository.findByName(trimmed).orElseGet(() -> {
-                Tag t = new Tag();
-                t.setName(trimmed);
-                return tagRepository.save(t);
-            });
+            Tag tag = findOrCreateTag(trimmed);
             PostTag pt = new PostTag();
             pt.setPostId(postId);
             pt.setTagId(tag.getId());
             postTagRepository.save(pt);
+        }
+    }
+
+    /**
+     * Find or create a tag with DataIntegrityViolationException retry
+     * to handle concurrent tag creation under the UNIQUE constraint on tags.name.
+     */
+    private Tag findOrCreateTag(String name) {
+        Optional<Tag> existing = tagRepository.findByName(name);
+        if (existing.isPresent()) return existing.get();
+        try {
+            Tag t = new Tag();
+            t.setName(name);
+            return tagRepository.saveAndFlush(t);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Another thread just created this tag — retry find
+            return tagRepository.findByName(name)
+                    .orElseThrow(() -> new RuntimeException("Failed to find or create tag: " + name));
         }
     }
 
@@ -164,6 +178,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<PostDetailVO> getAllPosts(Long userId, String sort) {
         List<Post> posts = postRepository.findByStatusNotIn(Arrays.asList("HIDDEN", "DELETED"));
         if (posts.isEmpty()) return List.of();
@@ -258,16 +273,17 @@ public class PostServiceImpl implements PostService {
             }
         }
 
-        post.setViewCount((post.getViewCount() != null ? post.getViewCount() : 0) + 1);
-        postRepository.save(post);
+        // Atomic view count increment (avoids read-then-write race condition)
+        postRepository.incrementViewCount(id);
+        // Re-read to get updated viewCount after atomic update
+        post = postRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
         PostDetailVO vo = convertToVO(post);
         vo.setCommentCount(commentRepository.countByPostIdAndIsDeletedFalse(post.getId()));
-        // Populate like/dislike counts
         vo.setLikeCount(postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.LIKE));
         vo.setDislikeCount(postReactionRepository.countByPostIdAndReactionType(post.getId(), PostReaction.ReactionType.DISLIKE));
         if (userId != null) {
             vo.setIsFavorited(postFavoriteRepository.existsByUserIdAndPostId(userId, id));
-            // Populate current user's reaction
             postReactionRepository.findByPostIdAndUserId(post.getId(), userId)
                     .ifPresent(r -> vo.setCurrentUserReaction(r.getReactionType().name()));
         }
@@ -341,11 +357,9 @@ public class PostServiceImpl implements PostService {
     }
 
     public PostDetailVO convertToVO(Post post) {
-        List<String> tags = postTagRepository.findByPostId(post.getId()).stream()
-                .map(pt -> tagRepository.findById(pt.getTagId()).map(Tag::getName).orElse(null))
-                .filter(name -> name != null)
-                .toList();
-        PostDetailVO vo = convertToVO(post, Map.of(), Map.of(post.getId(), tags));
+        // Batch load tags to avoid N+1 query
+        Map<Long, List<String>> tagsMap = batchLoadTags(List.of(post.getId()));
+        PostDetailVO vo = convertToVO(post, Map.of(), tagsMap);
         return vo;
     }
 
@@ -436,6 +450,8 @@ public class PostServiceImpl implements PostService {
             r.setPostId(postId);
             r.setUserId(userId);
             r.setReactionType(newType);
+            // DB-level unique constraint on (post_id, user_id) prevents race-condition duplicates.
+            // Frontend idempotency key header handles double-submit prevention.
             postReactionRepository.save(r);
             if (newType == PostReaction.ReactionType.LIKE) isNewLike = true;
         }
@@ -493,6 +509,7 @@ public class PostServiceImpl implements PostService {
         PostFavorite f = new PostFavorite();
         f.setUserId(userId);
         f.setPostId(postId);
+        // DB-level unique constraint on (user_id, post_id) prevents duplicate favorites
         postFavoriteRepository.save(f);
         return true;
     }

@@ -51,7 +51,8 @@ public class FileController {
                 : fullPath;
 
         // Thumbnail: serve _thumb.jpg variant
-        if ("1".equals(thumb)) {
+        boolean isThumbRequest = "1".equals(thumb);
+        if (isThumbRequest) {
             objectName = objectName.replaceAll("\\.[^.]+$", "_thumb.jpg");
         }
 
@@ -76,6 +77,25 @@ public class FileController {
             is.transferTo(os);
             os.flush();
         } catch (Exception e) {
+            // If thumbnail not found, fall back to original image
+            if (isThumbRequest) {
+                String originalName = fullPath.startsWith(bucket + "/")
+                        ? fullPath.substring(bucket.length() + 1)
+                        : fullPath;
+                try (InputStream is = client.getObject(GetObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(originalName)
+                        .build())) {
+                    String contentType = deriveContentType(originalName);
+                    response.setContentType(contentType != null ? contentType : "application/octet-stream");
+                    response.setHeader("Cache-Control", "public, max-age=86400");
+                    OutputStream os = response.getOutputStream();
+                    is.transferTo(os);
+                    os.flush();
+                    return;
+                } catch (Exception ignored) {
+                }
+            }
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         }
     }

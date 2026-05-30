@@ -1,11 +1,15 @@
 package com.snowball.controller;
 
+import com.snowball.common.BusinessException;
 import com.snowball.common.Result;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import com.snowball.dto.PostCreateDTO;
 import com.snowball.dto.PostUpdateDTO;
 import com.snowball.entity.PostVersion;
+import com.snowball.service.IdempotencyService;
 import com.snowball.service.PostService;
+import com.snowball.service.RateLimitService;
 import com.snowball.vo.PostDetailVO;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +21,16 @@ import java.util.Map;
 @RequestMapping("/api/v1/posts")
 public class PostController extends BaseController{
     private final PostService postService;
+    private final RateLimitService rateLimitService;
+    private final IdempotencyService idempotencyService;
+    private final HttpServletRequest httpRequest;
 
-    public PostController(PostService postService) {
+    public PostController(PostService postService, RateLimitService rateLimitService,
+                          IdempotencyService idempotencyService, HttpServletRequest httpRequest) {
         this.postService = postService;
+        this.rateLimitService = rateLimitService;
+        this.idempotencyService = idempotencyService;
+        this.httpRequest = httpRequest;
     }
 
     @GetMapping("/ping")
@@ -46,7 +57,27 @@ public class PostController extends BaseController{
 
     @PostMapping
     public Result<PostDetailVO> createPost(@Valid @RequestBody PostCreateDTO dto) {
-        return Result.success(postService.createPost(getCurrentUserId(), dto));
+        Long userId = getCurrentUserId();
+        // Rate limit check
+        var rateResult = rateLimitService.checkPostLimit(getClientIp());
+        if (!rateResult.allowed()) {
+            throw new BusinessException(429, "操作太频繁，请" + rateResult.retryAfterSeconds() + "秒后再试");
+        }
+        // Idempotency check
+        String idemToken = httpRequest.getHeader("X-Idempotency-Key");
+        if (!idempotencyService.checkAndConsume(userId, "post:create", idemToken)) {
+            throw new BusinessException(409, "请勿重复提交");
+        }
+        return Result.success(postService.createPost(userId, dto));
+    }
+
+    /** Simple IP extraction from X-Forwarded-For or remote address */
+    private String getClientIp() {
+        String forwarded = httpRequest.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return httpRequest.getRemoteAddr();
     }
 
     @PutMapping("/{id}")

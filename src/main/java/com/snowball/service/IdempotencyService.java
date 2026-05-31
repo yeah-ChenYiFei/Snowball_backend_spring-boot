@@ -46,13 +46,18 @@ public class IdempotencyService {
      */
     public boolean checkAndConsume(Long userId, String action, String token) {
         if (token == null || token.isBlank()) return true; // no token → allow
-        String key = PREFIX + userId + ":" + action;
-        String stored = redis.opsForValue().get(key);
-        if (stored == null) return true; // no stored token → allow
-        if (!stored.equals(token)) return false; // mismatch → duplicate
+        try {
+            String key = PREFIX + userId + ":" + action;
+            String stored = redis.opsForValue().get(key);
+            if (stored == null) return true; // no stored token → allow
+            if (!stored.equals(token)) return false; // mismatch → duplicate
 
-        // Valid match → consume (delete) to prevent reuse
-        redis.delete(key);
-        return true;
+            // Valid match → consume (delete) to prevent reuse
+            redis.delete(key);
+            return true;
+        } catch (Exception e) {
+            log.warn("Redis unavailable for idempotency check, allowing request", e);
+            return true;
+        }
     }
 }

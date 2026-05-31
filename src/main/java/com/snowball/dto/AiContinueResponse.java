@@ -4,6 +4,7 @@ public class AiContinueResponse {
     private String continuation;
     private String model;
     private int tokensUsed;
+    private Long articleId;
 
     public AiContinueResponse() {}
 
@@ -19,4 +20,6 @@ public class AiContinueResponse {
     public void setModel(String model) { this.model = model; }
     public int getTokensUsed() { return tokensUsed; }
     public void setTokensUsed(int tokensUsed) { this.tokensUsed = tokensUsed; }
+    public Long getArticleId() { return articleId; }
+    public void setArticleId(Long articleId) { this.articleId = articleId; }
 }

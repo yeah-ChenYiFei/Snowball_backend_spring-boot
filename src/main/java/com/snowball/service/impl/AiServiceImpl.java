@@ -313,7 +313,19 @@ public class AiServiceImpl implements AiService {
         String system = "你是一位富有创意的小说作者。根据世界观设定创作引人入胜的故事。\n"
                 + "要求：1.严格遵循设定 2.故事有趣有冲突有情感 3.输出纯正文不要引导语 4.约500-1500字";
 
-        return callDeepSeek(system, ctx.toString());
+        AiContinueResponse response = callDeepSeek(system, ctx.toString());
+
+        // Save as an Article so the user can revisit it later
+        Article article = new Article();
+        article.setUserId(userId);
+        article.setType(Article.ArticleType.ESSAY);
+        article.setTitle(world.getName() + " - AI故事");
+        article.setBody(response.getContinuation());
+        article.setWorldId(worldId);
+        article = articleRepository.save(article);
+        response.setArticleId(article.getId());
+
+        return response;
     }
 
     private AiContinueResponse callDeepSeek(String systemPrompt, String userPrompt) {

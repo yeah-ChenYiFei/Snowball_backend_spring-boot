@@ -68,10 +68,20 @@ public class RateLimitService {
     }
 
     public RateLimitResult checkPostLimit(String ip) {
-        return check(ip, "post", postPerMinute, 60);
+        try {
+            return check(ip, "post", postPerMinute, 60);
+        } catch (Exception e) {
+            log.warn("Redis unavailable for rate limit, allowing request", e);
+            return new RateLimitResult(true, 0);
+        }
     }
 
     public RateLimitResult checkCommentLimit(String ip) {
-        return check(ip, "comment", commentPerMinute, 60);
+        try {
+            return check(ip, "comment", commentPerMinute, 60);
+        } catch (Exception e) {
+            log.warn("Redis unavailable for rate limit, allowing request", e);
+            return new RateLimitResult(true, 0);
+        }
     }
 }

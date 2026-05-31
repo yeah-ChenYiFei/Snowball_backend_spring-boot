@@ -46,7 +46,6 @@ public class WorldServiceImpl implements WorldService {
     public List<WorldVO> getAccessibleWorlds(Long userId) {
         List<World> worlds = new ArrayList<>();
         worlds.addAll(worldRepository.findByUserIdOrderByCreatedAtDesc(userId));
-        worlds.addAll(worldRepository.findByIsPublicTrueAndUserIdNotOrderByCreatedAtDesc(userId));
         worlds.addAll(worldRepository.findByCollaboratorUserId(userId));
         return worlds.stream().map(w -> toVO(w, userId)).collect(Collectors.toList());
     }

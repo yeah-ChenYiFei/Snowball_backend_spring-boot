@@ -49,11 +49,11 @@ public class ArticleServiceImpl implements ArticleService {
             List<Article.ArticleType> types = Arrays.stream(type.split(","))
                     .map(Article.ArticleType::valueOf)
                     .toList();
-            articles = articleRepository.findByUserIdAndTypeInAndStatusNotOrderByCreatedAtDesc(userId, types, "DELETED");
+            articles = articleRepository.findByUserIdAndTypeInAndStatusNotAndWorldIdIsNullOrderByCreatedAtDesc(userId, types, "DELETED");
         } else if (hasSearch) {
             articles = articleRepository.searchByUserIdAndTitle(userId, search, "DELETED");
         } else {
-            articles = articleRepository.findByUserIdAndStatusNotOrderByCreatedAtDesc(userId, "DELETED");
+            articles = articleRepository.findByUserIdAndStatusNotAndWorldIdIsNullOrderByCreatedAtDesc(userId, "DELETED");
         }
 
         return articles.stream().map(this::toVO).collect(Collectors.toList());
@@ -141,7 +141,7 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public List<ArticleVO> getPublishedArticles() {
         List<Article.ArticleType> types = List.of(Article.ArticleType.NOVEL, Article.ArticleType.ESSAY);
-        return articleRepository.findByIsPublishedTrueAndTypeInOrderByPublishedAtDesc(types)
+        return articleRepository.findByIsPublishedTrueAndTypeInAndWorldIdIsNullOrderByPublishedAtDesc(types)
                 .stream().map(this::toVO).collect(Collectors.toList());
     }
 

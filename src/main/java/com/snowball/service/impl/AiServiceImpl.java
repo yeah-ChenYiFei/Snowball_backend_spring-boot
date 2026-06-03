@@ -101,33 +101,47 @@ public class AiServiceImpl implements AiService {
             }
         }
 
-        // 2. Existing chapters
+        // 2. Existing chapters (keep latest within context budget)
         List<Article> chapters = articleRepository.findByUserIdAndTypeAndStatusNotOrderByCreatedAtDesc(
                 article.getUserId(), Article.ArticleType.NOVEL, "DELETED");
         chapters = chapters.stream()
                 .filter(a -> a.getTitle().equals(article.getTitle()))
                 .collect(Collectors.toList());
 
-        contextBuilder.append("【已有章节】（按创建顺序）\n");
-        for (Article ch : chapters) {
-            if (ch.getChapter() != null && ch.getChapter().startsWith("$$cfg")) continue; // skip config
+        final int MAX_CONTEXT = 18000;
+
+        // Collect chapter snippets newest first, then reverse for display
+        List<String> chapterSnippets = new ArrayList<>();
+        for (int i = chapters.size() - 1; i >= 0; i--) {
+            Article ch = chapters.get(i);
+            if (ch.getChapter() != null && ch.getChapter().startsWith("$$cfg")) continue;
             String label = ch.getChapter() != null ? ch.getChapter() : "未标记章节";
-            contextBuilder.append("--- ").append(label).append(" ---\n");
             String body = ch.getBody();
             if (body != null && body.length() > 1500) body = body.substring(body.length() - 1500);
-            if (body != null) contextBuilder.append(body).append("\n\n");
+            if (body != null) {
+                chapterSnippets.add(0, "--- " + label + " ---\n" + body + "\n\n");
+            }
         }
 
-        // 3. Current chapter content (the most recent written content)
+        StringBuilder chBuf = new StringBuilder();
+        chBuf.append("【已有章节】（按创建顺序）\n");
+        for (String s : chapterSnippets) {
+            if (chBuf.length() + s.length() > MAX_CONTEXT) break;
+            chBuf.append(s);
+        }
+        contextBuilder.append(chBuf.toString());
+
+        // 3. Current chapter content (always keep the latest, capped at 4000 chars)
         String currentContent = article.getBody();
         contextBuilder.append("【当前正在写作的章节内容】\n");
         if (currentContent != null && !currentContent.isBlank()) {
-            contextBuilder.append(currentContent);
+            String cur = currentContent;
+            if (cur.length() > 4000) cur = cur.substring(cur.length() - 4000);
+            contextBuilder.append(cur);
         } else {
             contextBuilder.append("（新章节，尚未写入内容）");
         }
 
-        // Build the system + user prompt
         String systemPrompt = "你是一位专业的小说续写助手。根据提供的世界观设定和已有章节内容，为当前正在写作的章节进行合理且富有文采的续写。\n"
                 + "要求：\n"
                 + "1. 续写内容应自然衔接已有内容，保持风格一致\n"
@@ -190,11 +204,16 @@ public class AiServiceImpl implements AiService {
             }
         }
 
-        // 3. Existing chapters
+        // 3. Existing chapters (keep latest within context budget)
         List<NovelChapter> chapters = novelChapterRepository
                 .findByNovelIdOrderBySectionAscVolumeNumberAscChapterNumberAsc(novelId);
         contextBuilder.append("【已有章节】（按顺序）\n");
-        for (NovelChapter ch : chapters) {
+
+        final int MAX_CONTEXT = 18000;
+        // Build snippets newest-first, reverse for display order
+        List<String> snippets = new ArrayList<>();
+        for (int i = chapters.size() - 1; i >= 0; i--) {
+            NovelChapter ch = chapters.get(i);
             String label = ch.getSection() + " ";
             if (novel.getHasVolumes() != null && novel.getHasVolumes() && ch.getVolumeNumber() > 0) {
                 label += "第" + ch.getVolumeNumber() + "卷 ";
@@ -203,16 +222,23 @@ public class AiServiceImpl implements AiService {
             if (ch.getTitle() != null && !ch.getTitle().isBlank()) {
                 label += " " + ch.getTitle();
             }
-            contextBuilder.append("--- ").append(label).append(" ---\n");
             String body = ch.getBody();
             if (body != null && body.length() > 1500) body = body.substring(body.length() - 1500);
-            if (body != null) contextBuilder.append(body).append("\n\n");
+            snippets.add(0, "--- " + label + " ---\n" + (body != null ? body : "") + "\n\n");
         }
+        StringBuilder chBuf = new StringBuilder();
+        for (String s : snippets) {
+            if (chBuf.length() + s.length() > MAX_CONTEXT) break;
+            chBuf.append(s);
+        }
+        contextBuilder.append(chBuf.toString());
 
-        // 4. Current chapter content
+        // 4. Current chapter content (capped at 4000 chars)
         contextBuilder.append("【当前正在写作的章节内容】\n");
         if (currentBody != null && !currentBody.isBlank()) {
-            contextBuilder.append(currentBody);
+            String cur = currentBody;
+            if (cur.length() > 4000) cur = cur.substring(cur.length() - 4000);
+            contextBuilder.append(cur);
         } else {
             contextBuilder.append("（新章节，尚未写入内容）");
         }
@@ -226,7 +252,6 @@ public class AiServiceImpl implements AiService {
                 + "5. 如果当前章节为空，则根据上下文写出开篇";
 
         String userContent = contextBuilder.toString();
-        // If user provided a prompt, append it
         String prompt = request.get("prompt") instanceof String ? (String) request.get("prompt") : "";
         if (!prompt.isBlank()) {
             userContent += "\n\n【用户对续写的特别要求】" + prompt;
@@ -245,12 +270,22 @@ public class AiServiceImpl implements AiService {
         StringBuilder ctx = new StringBuilder();
         ctx.append("【接龙标题】").append(chain.getTitle()).append("\n\n");
         ctx.append("【已有的接龙内容】\n");
-        for (int i = 0; i < segments.size(); i++) {
+
+        // Keep latest segments within context budget
+        final int MAX_CONTEXT = 8000;
+        List<String> segSnippets = new ArrayList<>();
+        for (int i = segments.size() - 1; i >= 0; i--) {
             ChainSegment seg = segments.get(i);
             String body = seg.getBody();
             if (body != null && body.length() > 1000) body = body.substring(body.length() - 1000);
-            ctx.append("第").append(i + 1).append("段：").append(body != null ? body : "").append("\n\n");
+            segSnippets.add(0, "第" + (i + 1) + "段：" + (body != null ? body : "") + "\n\n");
         }
+        StringBuilder segBuf = new StringBuilder();
+        for (String s : segSnippets) {
+            if (segBuf.length() + s.length() > MAX_CONTEXT) break;
+            segBuf.append(s);
+        }
+        ctx.append(segBuf.toString());
 
         String userContent = ctx.toString();
         if (prompt != null && !prompt.isBlank()) {
@@ -277,9 +312,11 @@ public class AiServiceImpl implements AiService {
         ctx.append("\n");
 
         List<WorldEntry> selected = new ArrayList<>();
+        final int MAX_ENTRY_CONTEXT = 6000;
         if (entryIds != null && !entryIds.isEmpty()) {
             ctx.append("【选中的设定条目】\n");
             for (Long eid : entryIds) {
+                if (ctx.length() > MAX_ENTRY_CONTEXT) break;
                 worldEntryRepository.findById(eid).ifPresent(e -> {
                     ctx.append("- ").append(e.getName());
                     if (e.getType() != null) ctx.append("（").append(e.getType()).append("）");
@@ -294,6 +331,7 @@ public class AiServiceImpl implements AiService {
             if (!selected.isEmpty()) {
                 ctx.append("【世界的设定条目】\n");
                 for (WorldEntry e : selected) {
+                    if (ctx.length() > MAX_ENTRY_CONTEXT) break;
                     ctx.append("- ").append(e.getName());
                     if (e.getType() != null) ctx.append("（").append(e.getType()).append("）");
                     String c = e.getContent();
@@ -307,25 +345,13 @@ public class AiServiceImpl implements AiService {
         if (prompt != null && !prompt.isBlank()) {
             ctx.append("【故事要求】").append(prompt);
         } else {
-            ctx.append("【故事要求】请根据以上世界观设定创作一个有趣的故事片段。");
+            ctx.append("【故事要求】请根据以上世界观设定创作一个简短的故事片段，一段即可。");
         }
 
         String system = "你是一位富有创意的小说作者。根据世界观设定创作引人入胜的故事。\n"
-                + "要求：1.严格遵循设定 2.故事有趣有冲突有情感 3.输出纯正文不要引导语 4.约500-1500字";
+                + "要求：1.严格遵循设定 2.故事有趣有冲突有情感 3.输出纯正文不要引导语 4.仅一段，控制在200字以内";
 
-        AiContinueResponse response = callDeepSeek(system, ctx.toString());
-
-        // Save as an Article so the user can revisit it later
-        Article article = new Article();
-        article.setUserId(userId);
-        article.setType(Article.ArticleType.ESSAY);
-        article.setTitle(world.getName() + " - AI故事");
-        article.setBody(response.getContinuation());
-        article.setWorldId(worldId);
-        article = articleRepository.save(article);
-        response.setArticleId(article.getId());
-
-        return response;
+        return callDeepSeek(system, ctx.toString());
     }
 
     private AiContinueResponse callDeepSeek(String systemPrompt, String userPrompt) {

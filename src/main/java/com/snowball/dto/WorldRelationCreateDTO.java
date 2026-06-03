@@ -16,4 +16,8 @@ public class WorldRelationCreateDTO {
     private String direction; // LEFT_ARROW, RIGHT_ARROW, BIDIRECTIONAL
 
     private String description;
+
+    // Optional: list of all entry IDs for multi-entry relations (>2 entries)
+    // When provided with >2 entries, a circle group is created on the graph
+    private java.util.List<Long> entryIds;
 }

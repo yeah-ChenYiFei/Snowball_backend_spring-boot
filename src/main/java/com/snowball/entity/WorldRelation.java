@@ -21,6 +21,11 @@ public class WorldRelation {
     @Column(name = "to_entry_id", nullable = false)
     private Long toEntryId;
 
+    // JSON array of all entry IDs for multi-entry relations (e.g. "[1,2,3]")
+    // For binary relations this can be null; fromEntryId/toEntryId are always set
+    @Column(name = "entry_ids", columnDefinition = "TEXT")
+    private String entryIds;
+
     // LEFT_ARROW: from ← to  (to is the ___ of from)
     // RIGHT_ARROW: from → to (from is the ___ of to)
     // BIDIRECTIONAL: from ↔ to

@@ -13,6 +13,11 @@ import com.snowball.vo.WorldRelationVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +27,7 @@ public class WorldRelationServiceImpl implements WorldRelationService {
     private final WorldRelationRepository relationRepository;
     private final WorldEntryRepository entryRepository;
     private final WorldRepository worldRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public WorldRelationServiceImpl(WorldRelationRepository relationRepository,
                                     WorldEntryRepository entryRepository,
@@ -53,6 +59,16 @@ public class WorldRelationServiceImpl implements WorldRelationService {
         rel.setToEntryId(dto.getToEntryId());
         rel.setDirection(WorldRelation.ArrowDirection.valueOf(dto.getDirection()));
         rel.setDescription(dto.getDescription());
+
+        // Handle multi-entry relations (>2 entries)
+        if (dto.getEntryIds() != null && dto.getEntryIds().size() > 2) {
+            try {
+                rel.setEntryIds(objectMapper.writeValueAsString(dto.getEntryIds()));
+            } catch (JsonProcessingException e) {
+                throw new BusinessException(400, "条目ID列表格式错误");
+            }
+        }
+
         return toVO(relationRepository.save(rel));
     }
 
@@ -70,6 +86,18 @@ public class WorldRelationServiceImpl implements WorldRelationService {
         rel.setToEntryId(dto.getToEntryId());
         rel.setDirection(WorldRelation.ArrowDirection.valueOf(dto.getDirection()));
         rel.setDescription(dto.getDescription());
+
+        // Handle multi-entry relations (>2 entries)
+        if (dto.getEntryIds() != null && dto.getEntryIds().size() > 2) {
+            try {
+                rel.setEntryIds(objectMapper.writeValueAsString(dto.getEntryIds()));
+            } catch (JsonProcessingException e) {
+                throw new BusinessException(400, "条目ID列表格式错误");
+            }
+        } else {
+            rel.setEntryIds(null);
+        }
+
         return toVO(relationRepository.save(rel));
     }
 
@@ -98,6 +126,22 @@ public class WorldRelationServiceImpl implements WorldRelationService {
 
         entryRepository.findById(r.getFromEntryId()).ifPresent(e -> vo.setFromEntryName(e.getName()));
         entryRepository.findById(r.getToEntryId()).ifPresent(e -> vo.setToEntryName(e.getName()));
+
+        // Parse multi-entry IDs and resolve names
+        if (r.getEntryIds() != null && !r.getEntryIds().isEmpty()) {
+            try {
+                List<Long> ids = objectMapper.readValue(r.getEntryIds(), new TypeReference<List<Long>>() {});
+                vo.setEntryIds(ids);
+                List<String> names = new ArrayList<>();
+                for (Long id : ids) {
+                    entryRepository.findById(id).ifPresent(e -> names.add(e.getName()));
+                }
+                vo.setEntryNames(names);
+            } catch (JsonProcessingException e) {
+                vo.setEntryIds(new ArrayList<>());
+                vo.setEntryNames(new ArrayList<>());
+            }
+        }
 
         return vo;
     }

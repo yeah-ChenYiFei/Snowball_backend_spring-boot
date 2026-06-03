@@ -38,4 +38,13 @@ public interface PostService {
     // Favorites
     boolean toggleFavorite(Long postId, Long userId);
     List<PostDetailVO> getFavoritePosts(Long userId);
+
+    // Batch delete (returns count of deleted posts)
+    int batchDelete(List<Long> ids, Long userId);
+
+    // Batch toggle status
+    int batchToggleStatus(List<Long> ids, Long userId, String newStatus);
+
+    // Single post status toggle
+    PostDetailVO toggleStatus(Long id, Long userId, String newStatus);
 }

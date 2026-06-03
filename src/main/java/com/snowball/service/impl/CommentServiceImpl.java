@@ -82,10 +82,15 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public void createComment(Long postId, Long userId, CommentCreateDTO dto) {
+        // Allow image-only comments: use placeholder body when text is empty
+        String body = (dto.getBody() != null && !dto.getBody().isBlank())
+                ? dto.getBody() : (dto.getImageUrl() != null ? "[图片]" : "");
+        if (body.isEmpty()) throw new BusinessException(400, "评论内容不能为空");
+
         Comment comment = new Comment();
         comment.setPostId(postId);
         comment.setUserId(userId);
-        comment.setBody(dto.getBody());
+        comment.setBody(body);
         comment.setParentId(dto.getParentId());
         comment.setImageUrl(dto.getImageUrl());
         commentRepository.save(comment);
@@ -100,14 +105,14 @@ public class CommentServiceImpl implements CommentService {
             // Reply: notify parent comment owner
             Comment parentComment = commentRepository.findById(dto.getParentId()).orElse(null);
             if (parentComment != null && !parentComment.getUserId().equals(userId)) {
-                String preview = dto.getBody().length() > 80 ? dto.getBody().substring(0, 80) + "..." : dto.getBody();
+                String preview = body.length() > 80 ? body.substring(0, 80) + "..." : body;
                 notificationService.create(parentComment.getUserId(), "REPLY", comment.getId(), "COMMENT",
                         userId, actorName + " 回复了你的评论：" + preview);
             }
         } else {
             // Top-level comment: notify post owner
             if (!post.getUserId().equals(userId)) {
-                String preview = dto.getBody().length() > 80 ? dto.getBody().substring(0, 80) + "..." : dto.getBody();
+                String preview = body.length() > 80 ? body.substring(0, 80) + "..." : body;
                 notificationService.create(post.getUserId(), "COMMENT", comment.getId(), "COMMENT",
                         userId, actorName + " 评论了你的帖子：" + preview);
             }
@@ -144,11 +149,16 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public void createGenericComment(String sourceType, Long sourceId, Long userId, CommentCreateDTO dto) {
+        // Allow image-only comments
+        String body = (dto.getBody() != null && !dto.getBody().isBlank())
+                ? dto.getBody() : (dto.getImageUrl() != null ? "[图片]" : "");
+        if (body.isEmpty()) throw new BusinessException(400, "评论内容不能为空");
+
         Comment comment = new Comment();
         comment.setSourceType(sourceType);
         comment.setSourceId(sourceId);
         comment.setUserId(userId);
-        comment.setBody(dto.getBody());
+        comment.setBody(body);
         comment.setParentId(dto.getParentId());
         comment.setImageUrl(dto.getImageUrl());
         commentRepository.save(comment);

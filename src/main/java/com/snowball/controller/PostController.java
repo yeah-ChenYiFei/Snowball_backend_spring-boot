@@ -126,4 +126,44 @@ public class PostController extends BaseController{
     public Result<List<PostDetailVO>> getFavorites() {
         return Result.success(postService.getFavoritePosts(getCurrentUserId()));
     }
+
+    @PostMapping("/batch-delete")
+    public Result<Map<String, Object>> batchDelete(@RequestBody Map<String, Object> body) {
+        Long userId = getCurrentUserId();
+        @SuppressWarnings("unchecked")
+        List<Integer> rawIds = (List<Integer>) body.get("ids");
+        if (rawIds == null || rawIds.isEmpty()) {
+            throw new BusinessException(400, "请选择要删除的帖子");
+        }
+        List<Long> ids = rawIds.stream().map(Long::valueOf).toList();
+        int deleted = postService.batchDelete(ids, userId);
+        return Result.success(Map.of("deleted", deleted));
+    }
+
+    @PostMapping("/batch-toggle-status")
+    public Result<Map<String, Object>> batchToggleStatus(@RequestBody Map<String, Object> body) {
+        Long userId = getCurrentUserId();
+        @SuppressWarnings("unchecked")
+        List<Integer> rawIds = (List<Integer>) body.get("ids");
+        String newStatus = body.get("status") instanceof String ? (String) body.get("status") : "";
+        if (rawIds == null || rawIds.isEmpty()) {
+            throw new BusinessException(400, "请选择要操作的帖子");
+        }
+        if (!"PUBLISHED".equals(newStatus) && !"HIDDEN".equals(newStatus)) {
+            throw new BusinessException(400, "状态值无效");
+        }
+        List<Long> ids = rawIds.stream().map(Long::valueOf).toList();
+        int updated = postService.batchToggleStatus(ids, userId, newStatus);
+        return Result.success(Map.of("updated", updated, "status", newStatus));
+    }
+
+    @PostMapping("/{id}/toggle-status")
+    public Result<PostDetailVO> togglePostStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        Long userId = getCurrentUserId();
+        String status = body.get("status");
+        if (status == null || (!"PUBLISHED".equals(status) && !"HIDDEN".equals(status))) {
+            throw new BusinessException(400, "状态值无效");
+        }
+        return Result.success(postService.toggleStatus(id, userId, status));
+    }
 }

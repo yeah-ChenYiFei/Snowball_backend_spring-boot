@@ -349,6 +349,55 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public int batchDelete(List<Long> ids, Long userId) {
+        int count = 0;
+        for (Long id : ids) {
+            Post post = postRepository.findById(id).orElse(null);
+            if (post == null) continue;
+            if (!post.getUserId().equals(userId)) continue;
+            if ("HIDDEN".equals(post.getStatus()) || "DELETED".equals(post.getStatus())) continue;
+            post.setStatus("HIDDEN");
+            postRepository.save(post);
+            count++;
+        }
+        return count;
+    }
+
+    @Override
+    public int batchToggleStatus(List<Long> ids, Long userId, String newStatus) {
+        int count = 0;
+        for (Long id : ids) {
+            Post post = postRepository.findById(id).orElse(null);
+            if (post == null) continue;
+            if (!post.getUserId().equals(userId)) continue;
+            if ("DELETED".equals(post.getStatus())) continue;
+            if (!newStatus.equals(post.getStatus())) {
+                post.setStatus(newStatus);
+                postRepository.save(post);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    @Transactional
+    public PostDetailVO toggleStatus(Long id, Long userId, String newStatus) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "帖子不存在"));
+        if (!post.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作他人帖子");
+        }
+        // Normalize: some posts have old lowercase "public" status
+        if (!"PUBLISHED".equals(newStatus) && !"HIDDEN".equals(newStatus)) {
+            throw new BusinessException(400, "无效状态");
+        }
+        post.setStatus(newStatus);
+        post = postRepository.save(post);
+        return convertToVO(post);
+    }
+
+    @Override
     public List<PostVersion> getPostVersions(Long id) {
         if (!postRepository.existsById(id)) {
             throw new BusinessException(404, "帖子不存在");

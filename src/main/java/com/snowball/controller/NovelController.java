@@ -93,4 +93,19 @@ public class NovelController extends BaseController {
         novelService.deleteChapter(chapterId, getCurrentUserId());
         return Result.success();
     }
+
+    @PostMapping("/{id}/favorite")
+    public Result<Boolean> toggleFavorite(@PathVariable Long id) {
+        return Result.success(novelService.toggleFavorite(id, getCurrentUserId()));
+    }
+
+    @GetMapping("/favorites")
+    public Result<List<NovelVO>> getFavorites() {
+        return Result.success(novelService.getFavoriteNovels(getCurrentUserId()));
+    }
+
+    @GetMapping("/{id}/favorite/status")
+    public Result<Boolean> checkFavoriteStatus(@PathVariable Long id) {
+        return Result.success(novelService.checkFavoriteStatus(id, getCurrentUserId()));
+    }
 }

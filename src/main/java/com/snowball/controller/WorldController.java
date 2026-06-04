@@ -90,4 +90,19 @@ public class WorldController extends BaseController {
         worldService.handleJoinRequest(reqId, getCurrentUserId(), Boolean.TRUE.equals(body.get("approved")));
         return Result.success("ok");
     }
+
+    @PostMapping("/{id}/favorite")
+    public Result<Boolean> toggleFavorite(@PathVariable Long id) {
+        return Result.success(worldService.toggleFavorite(id, getCurrentUserId()));
+    }
+
+    @GetMapping("/favorites")
+    public Result<List<WorldVO>> getFavorites() {
+        return Result.success(worldService.getFavoriteWorlds(getCurrentUserId()));
+    }
+
+    @GetMapping("/{id}/favorite/status")
+    public Result<Boolean> checkFavoriteStatus(@PathVariable Long id) {
+        return Result.success(worldService.checkFavoriteStatus(id, getCurrentUserId()));
+    }
 }

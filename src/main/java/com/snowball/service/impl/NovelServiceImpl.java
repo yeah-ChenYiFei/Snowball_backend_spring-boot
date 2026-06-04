@@ -4,8 +4,10 @@ import com.snowball.common.BusinessException;
 import com.snowball.dto.*;
 import com.snowball.entity.Novel;
 import com.snowball.entity.NovelChapter;
+import com.snowball.entity.NovelFavorite;
 import com.snowball.entity.World;
 import com.snowball.repository.NovelChapterRepository;
+import com.snowball.repository.NovelFavoriteRepository;
 import com.snowball.repository.NovelRepository;
 import com.snowball.repository.UserRepository;
 import com.snowball.repository.WorldRepository;
@@ -26,15 +28,18 @@ public class NovelServiceImpl implements NovelService {
     private final NovelChapterRepository chapterRepository;
     private final UserRepository userRepository;
     private final WorldRepository worldRepository;
+    private final NovelFavoriteRepository novelFavoriteRepository;
 
     public NovelServiceImpl(NovelRepository novelRepository,
                             NovelChapterRepository chapterRepository,
                             UserRepository userRepository,
-                            WorldRepository worldRepository) {
+                            WorldRepository worldRepository,
+                            NovelFavoriteRepository novelFavoriteRepository) {
         this.novelRepository = novelRepository;
         this.chapterRepository = chapterRepository;
         this.userRepository = userRepository;
         this.worldRepository = worldRepository;
+        this.novelFavoriteRepository = novelFavoriteRepository;
     }
 
     @Override
@@ -291,6 +296,40 @@ public class NovelServiceImpl implements NovelService {
                 .stream().map(this::toChapterVO).collect(Collectors.toList());
         vo.setChapters(chapters);
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public boolean toggleFavorite(Long novelId, Long userId) {
+        java.util.Optional<NovelFavorite> existing = novelFavoriteRepository.findByUserIdAndNovelId(userId, novelId);
+        if (existing.isPresent()) {
+            novelFavoriteRepository.delete(existing.get());
+            return false;
+        }
+        NovelFavorite f = new NovelFavorite();
+        f.setUserId(userId);
+        f.setNovelId(novelId);
+        novelFavoriteRepository.save(f);
+        return true;
+    }
+
+    @Override
+    public List<NovelVO> getFavoriteNovels(Long userId) {
+        List<NovelFavorite> favs = novelFavoriteRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (favs.isEmpty()) return List.of();
+
+        List<Long> novelIds = favs.stream().map(NovelFavorite::getNovelId).toList();
+        List<Novel> novels = novelRepository.findAllById(novelIds);
+
+        return novels.stream().map(n -> {
+            NovelVO vo = toNovelVO(n);
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public Boolean checkFavoriteStatus(Long novelId, Long userId) {
+        return novelFavoriteRepository.existsByUserIdAndNovelId(userId, novelId);
     }
 
     private NovelChapterVO toChapterVO(NovelChapter c) {

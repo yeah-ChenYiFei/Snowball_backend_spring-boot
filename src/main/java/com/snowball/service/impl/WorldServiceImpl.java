@@ -6,6 +6,7 @@ import com.snowball.dto.WorldUpdateDTO;
 import com.snowball.entity.JoinRequest;
 import com.snowball.entity.World;
 import com.snowball.entity.WorldCollaborator;
+import com.snowball.entity.WorldFavorite;
 import com.snowball.repository.*;
 import com.snowball.service.WorldService;
 import com.snowball.vo.CollaboratorVO;
@@ -27,19 +28,22 @@ public class WorldServiceImpl implements WorldService {
     private final WorldCollaboratorRepository collaboratorRepository;
     private final JoinRequestRepository joinRequestRepository;
     private final UserRepository userRepository;
+    private final WorldFavoriteRepository worldFavoriteRepository;
 
     public WorldServiceImpl(WorldRepository worldRepository,
                             WorldEntryRepository entryRepository,
                             WorldRelationRepository relationRepository,
                             WorldCollaboratorRepository collaboratorRepository,
                             JoinRequestRepository joinRequestRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            WorldFavoriteRepository worldFavoriteRepository) {
         this.worldRepository = worldRepository;
         this.entryRepository = entryRepository;
         this.relationRepository = relationRepository;
         this.collaboratorRepository = collaboratorRepository;
         this.joinRequestRepository = joinRequestRepository;
         this.userRepository = userRepository;
+        this.worldFavoriteRepository = worldFavoriteRepository;
     }
 
     @Override
@@ -228,5 +232,36 @@ public class WorldServiceImpl implements WorldService {
             }
         }
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public boolean toggleFavorite(Long worldId, Long userId) {
+        java.util.Optional<WorldFavorite> existing = worldFavoriteRepository.findByUserIdAndWorldId(userId, worldId);
+        if (existing.isPresent()) {
+            worldFavoriteRepository.delete(existing.get());
+            return false;
+        }
+        WorldFavorite f = new WorldFavorite();
+        f.setUserId(userId);
+        f.setWorldId(worldId);
+        worldFavoriteRepository.save(f);
+        return true;
+    }
+
+    @Override
+    public List<WorldVO> getFavoriteWorlds(Long userId) {
+        List<WorldFavorite> favs = worldFavoriteRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (favs.isEmpty()) return List.of();
+
+        List<Long> worldIds = favs.stream().map(WorldFavorite::getWorldId).toList();
+        List<World> worlds = worldRepository.findAllById(worldIds);
+
+        return worlds.stream().map(w -> toVO(w, userId)).collect(Collectors.toList());
+    }
+
+    @Override
+    public Boolean checkFavoriteStatus(Long worldId, Long userId) {
+        return worldFavoriteRepository.existsByUserIdAndWorldId(userId, worldId);
     }
 }

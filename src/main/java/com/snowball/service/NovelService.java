@@ -22,4 +22,8 @@ public interface NovelService {
     NovelVO bindWorld(Long novelId, Long worldId, Long userId);
     NovelVO unbindWorld(Long novelId, Long userId);
     List<NovelVO> getWorldBoundNovels(Long worldId, Long userId);
+
+    boolean toggleFavorite(Long novelId, Long userId);
+    List<NovelVO> getFavoriteNovels(Long userId);
+    Boolean checkFavoriteStatus(Long novelId, Long userId);
 }

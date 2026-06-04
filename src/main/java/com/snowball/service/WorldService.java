@@ -19,4 +19,8 @@ public interface WorldService {
     JoinRequestVO requestJoin(Long worldId, Long applicantId, String reason);
     List<JoinRequestVO> getJoinRequests(Long worldId, Long ownerId);
     void handleJoinRequest(Long requestId, Long ownerId, boolean approved);
+
+    boolean toggleFavorite(Long worldId, Long userId);
+    List<WorldVO> getFavoriteWorlds(Long userId);
+    Boolean checkFavoriteStatus(Long worldId, Long userId);
 }
